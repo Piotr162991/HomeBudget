@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -9,23 +11,29 @@ using HouseBug.ViewModels.Base;
 
 namespace HouseBug.ViewModels
 {
-    public class MainViewModel : ViewModelBase
+    public class MainViewModel : ViewModelBase, IDisposable
     {
         private readonly BudgetManager _budgetManager;
-        private readonly ReportGenerator _reportGenerator;
 
         public MainViewModel()
         {
             _budgetManager = new BudgetManager();
-            _reportGenerator = new ReportGenerator(_budgetManager);
-            
+
+            Transactions = new ObservableCollection<Transaction>();
+            Categories = new ObservableCollection<Category>();
+
             InitializeCommands();
             LoadData();
         }
 
-        #region Properties
+        // Event zamiast metody
+        public event Func<TransactionViewModel, Transaction?> ShowTransactionDialogRequested;
+        public event Func<string, bool> ShowConfirmationDialogRequested;
+        public event Func<string, string> GetSaveFilePathRequested;
 
+        // Properties (pozostaw bez zmian)
         private ObservableCollection<Transaction> _transactions;
+
         public ObservableCollection<Transaction> Transactions
         {
             get => _transactions;
@@ -33,6 +41,7 @@ namespace HouseBug.ViewModels
         }
 
         private ObservableCollection<Category> _categories;
+
         public ObservableCollection<Category> Categories
         {
             get => _categories;
@@ -40,20 +49,15 @@ namespace HouseBug.ViewModels
         }
 
         private Transaction _selectedTransaction;
+
         public Transaction SelectedTransaction
         {
             get => _selectedTransaction;
             set => SetProperty(ref _selectedTransaction, value);
         }
 
-        private BudgetSummary _currentMonthSummary;
-        public BudgetSummary CurrentMonthSummary
-        {
-            get => _currentMonthSummary;
-            set => SetProperty(ref _currentMonthSummary, value);
-        }
-
         private DateTime _selectedDate = DateTime.Now;
+
         public DateTime SelectedDate
         {
             get => _selectedDate;
@@ -68,6 +72,7 @@ namespace HouseBug.ViewModels
         }
 
         private Category _selectedCategoryFilter;
+
         public Category SelectedCategoryFilter
         {
             get => _selectedCategoryFilter;
@@ -81,6 +86,7 @@ namespace HouseBug.ViewModels
         }
 
         private string _searchText;
+
         public string SearchText
         {
             get => _searchText;
@@ -94,6 +100,7 @@ namespace HouseBug.ViewModels
         }
 
         private decimal _totalIncome;
+
         public decimal TotalIncome
         {
             get => _totalIncome;
@@ -101,6 +108,7 @@ namespace HouseBug.ViewModels
         }
 
         private decimal _totalExpenses;
+
         public decimal TotalExpenses
         {
             get => _totalExpenses;
@@ -108,6 +116,7 @@ namespace HouseBug.ViewModels
         }
 
         private decimal _balance;
+
         public decimal Balance
         {
             get => _balance;
@@ -115,16 +124,14 @@ namespace HouseBug.ViewModels
         }
 
         private string _statusMessage;
+
         public string StatusMessage
         {
             get => _statusMessage;
             set => SetProperty(ref _statusMessage, value);
         }
 
-        #endregion
-
-        #region Commands
-
+        // Commands
         public ICommand AddTransactionCommand { get; private set; }
         public ICommand EditTransactionCommand { get; private set; }
         public ICommand DeleteTransactionCommand { get; private set; }
@@ -141,30 +148,24 @@ namespace HouseBug.ViewModels
             EditTransactionCommand = new RelayCommand(EditTransaction, () => SelectedTransaction != null);
             DeleteTransactionCommand = new RelayCommand(DeleteTransaction, () => SelectedTransaction != null);
             RefreshCommand = new RelayCommand(RefreshData);
-            ExportToCsvCommand = new RelayCommand(ExportToCsv, () => Transactions?.Any() == true);
+            ExportToCsvCommand = new RelayCommand(ExportToCsv);
             GenerateReportCommand = new RelayCommand(GenerateReport);
             ClearFiltersCommand = new RelayCommand(ClearFilters);
             ShowPreviousMonthCommand = new RelayCommand(ShowPreviousMonth);
             ShowNextMonthCommand = new RelayCommand(ShowNextMonth);
         }
 
-        #endregion
-
-        #region Command Methods
-
         private void AddTransaction()
         {
             var transactionViewModel = new TransactionViewModel(_budgetManager, Categories?.ToList());
-            
-            // Tutaj powinna być logika otwierania okna dialogowego
-            // Na razie używamy przykładowej implementacji
-            var newTransaction = ShowTransactionDialog(transactionViewModel);
-            
+
+            var newTransaction = ShowTransactionDialogRequested?.Invoke(transactionViewModel);
+
             if (newTransaction != null)
             {
                 Transactions?.Add(newTransaction);
-                UpdateSummary();
-                StatusMessage = "Transakcja została dodana.";
+                LoadMonthlySummary();
+                StatusMessage = "Dodano nową transakcję";
             }
         }
 
@@ -172,16 +173,20 @@ namespace HouseBug.ViewModels
         {
             if (SelectedTransaction == null) return;
 
-            var transactionViewModel = new TransactionViewModel(_budgetManager, Categories?.ToList(), SelectedTransaction);
-            
-            var updatedTransaction = ShowTransactionDialog(transactionViewModel);
-            
+            var transactionViewModel =
+                new TransactionViewModel(_budgetManager, Categories?.ToList(), SelectedTransaction);
+
+            var updatedTransaction = ShowTransactionDialogRequested?.Invoke(transactionViewModel);
+
             if (updatedTransaction != null)
             {
                 var index = Transactions.IndexOf(SelectedTransaction);
-                Transactions[index] = updatedTransaction;
-                UpdateSummary();
-                StatusMessage = "Transakcja została zaktualizowana.";
+                if (index >= 0)
+                {
+                    Transactions[index] = updatedTransaction;
+                    LoadMonthlySummary();
+                    StatusMessage = "Zaktualizowano transakcję";
+                }
             }
         }
 
@@ -189,102 +194,141 @@ namespace HouseBug.ViewModels
         {
             if (SelectedTransaction == null) return;
 
-            // Tutaj powinna być logika potwierdzenia usunięcia
-            var result = ShowConfirmationDialog("Czy na pewno chcesz usunąć tę transakcję?");
-            
-            if (result)
+            var confirmed = ShowConfirmationDialogRequested?.Invoke("Czy na pewno chcesz usunąć tę transakcję?") ??
+                            false;
+
+            if (confirmed)
             {
                 SetBusy(true, "Usuwanie transakcji...");
-                
-                try
+
+                var success = await _budgetManager.DeleteTransactionAsync(SelectedTransaction.Id);
+
+                if (success)
                 {
-                    var success = await _budgetManager.DeleteTransactionAsync(SelectedTransaction.Id);
-                    
-                    if (success)
-                    {
-                        Transactions?.Remove(SelectedTransaction);
-                        UpdateSummary();
-                        StatusMessage = "Transakcja została usunięta.";
-                    }
-                    else
-                    {
-                        StatusMessage = "Błąd podczas usuwania transakcji.";
-                    }
+                    Transactions.Remove(SelectedTransaction);
+                    LoadMonthlySummary();
+                    StatusMessage = "Transakcja została usunięta";
                 }
-                finally
+                else
                 {
-                    SetBusy(false);
+                    StatusMessage = "Błąd podczas usuwania transakcji";
                 }
+
+                SetBusy(false);
             }
         }
 
         private async void RefreshData()
         {
             SetBusy(true, "Odświeżanie danych...");
-            
-            try
-            {
-                await LoadDataAsync();
-                StatusMessage = "Dane zostały odświeżone.";
-            }
-            finally
-            {
-                SetBusy(false);
-            }
+            await LoadDataAsync();
+            SetBusy(false);
+            StatusMessage = "Dane zostały odświeżone";
         }
 
         private async void ExportToCsv()
         {
-            if (Transactions?.Any() != true) return;
+            var filePath = GetSaveFilePathRequested?.Invoke("csv");
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                SetBusy(true, "Eksportowanie...");
 
-            SetBusy(true, "Eksportowanie do CSV...");
-            
-            try
-            {
-                // Tutaj powinna być logika wyboru lokalizacji pliku
-                var filePath = GetSaveFilePath("csv");
-                
-                if (!string.IsNullOrEmpty(filePath))
+                try
                 {
-                    var success = await _reportGenerator.ExportToCsvAsync(Transactions.ToList(), filePath);
-                    
-                    if (success)
-                    {
-                        StatusMessage = $"Dane wyeksportowane do: {filePath}";
-                    }
-                    else
-                    {
-                        StatusMessage = "Błąd podczas eksportowania danych.";
-                    }
+                    // Prosty eksport do CSV
+                    await ExportTransactionsToCsvAsync(Transactions.ToList(), filePath);
+                    StatusMessage = $"Dane wyeksportowane do: {filePath}";
                 }
-            }
-            finally
-            {
+                catch (Exception ex)
+                {
+                    StatusMessage = $"Błąd podczas eksportu: {ex.Message}";
+                }
+
                 SetBusy(false);
             }
         }
 
+        private async Task ExportTransactionsToCsvAsync(List<Transaction> transactions, string filePath)
+        {
+            await Task.Run(() =>
+            {
+                using var writer = new System.IO.StreamWriter(filePath);
+
+                // Nagłówki
+                writer.WriteLine("Data,Kategoria,Opis,Kwota,Typ");
+
+                // Dane
+                foreach (var transaction in transactions)
+                {
+                    var line = $"{transaction.Date:yyyy-MM-dd}," +
+                               $"{transaction.Category?.Name ?? "Brak"}," +
+                               $"\"{transaction.Description}\"," +
+                               $"{transaction.Amount:F2}," +
+                               $"{(transaction.IsIncome ? "Przychód" : "Wydatek")}";
+
+                    writer.WriteLine(line);
+                }
+            });
+        }
+
         private void GenerateReport()
         {
-            SetBusy(true, "Generowanie raportu...");
-            
-            try
+            var report = GenerateSimpleReport();
+
+            // Pokaż raport w prostym MessageBox lub stwórz prostą implementację
+            var confirmed =
+                ShowConfirmationDialogRequested?.Invoke(
+                    $"Raport miesięczny:\n\n{report}\n\nCzy chcesz zapisać raport do pliku?") ?? false;
+
+            if (confirmed)
             {
-                var report = _reportGenerator.GenerateMonthlyReport(SelectedDate);
-                ShowReportDialog(report);
-                StatusMessage = "Raport został wygenerowany.";
+                var filePath = GetSaveFilePathRequested?.Invoke("txt");
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    System.IO.File.WriteAllText(filePath, report);
+                    StatusMessage = $"Raport zapisany do: {filePath}";
+                }
             }
-            finally
+        }
+
+        private string GenerateSimpleReport()
+        {
+            var monthName = SelectedDate.ToString("MMMM yyyy");
+            var report = $"RAPORT MIESIĘCZNY - {monthName.ToUpper()}\n";
+            report += new string('=', 50) + "\n\n";
+
+            report += $"Przychody: {TotalIncome:C}\n";
+            report += $"Wydatki: {TotalExpenses:C}\n";
+            report += $"Saldo: {Balance:C}\n\n";
+
+            if (Categories?.Any() == true)
             {
-                SetBusy(false);
+                report += "WYDATKI WEDŁUG KATEGORII:\n";
+                report += new string('-', 30) + "\n";
+
+                foreach (var category in Categories)
+                {
+                    var categoryExpenses = Transactions
+                        .Where(t => !t.IsIncome && t.CategoryId == category.Id)
+                        .Sum(t => t.Amount);
+
+                    if (categoryExpenses > 0)
+                    {
+                        report += $"{category.Name}: {categoryExpenses:C}\n";
+                    }
+                }
             }
+
+            report += $"\nRaport wygenerowany: {DateTime.Now:dd.MM.yyyy HH:mm}";
+
+            return report;
         }
 
         private void ClearFilters()
         {
             SelectedCategoryFilter = null;
             SearchText = string.Empty;
-            StatusMessage = "Filtry zostały wyczyszczone.";
+            StatusMessage = "Filtry zostały wyczyszczone";
         }
 
         private void ShowPreviousMonth()
@@ -297,133 +341,87 @@ namespace HouseBug.ViewModels
             SelectedDate = SelectedDate.AddMonths(1);
         }
 
-        #endregion
-
-        #region Data Loading
-
         private async void LoadData()
         {
+            SetBusy(true, "Ładowanie danych...");
             await LoadDataAsync();
+            SetBusy(false);
         }
 
         private async Task LoadDataAsync()
         {
-            SetBusy(true, "Ładowanie danych...");
-            
             try
             {
-                // Ładowanie kategorii
-                var categories = await Task.Run(() => _budgetManager.GetAllCategories());
-                Categories = new ObservableCollection<Category>(categories);
+                var categories = _budgetManager.GetAllCategories();
+                Categories.Clear();
+                foreach (var category in categories)
+                {
+                    Categories.Add(category);
+                }
 
-                // Ładowanie transakcji dla aktualnego miesiąca
                 LoadTransactionsForMonth();
-                
-                // Ładowanie podsumowania miesięcznego
                 LoadMonthlySummary();
             }
-            finally
+            catch (Exception ex)
             {
-                SetBusy(false);
+                StatusMessage = $"Błąd podczas ładowania danych: {ex.Message}";
             }
         }
 
         private void LoadTransactionsForMonth()
         {
             var transactions = _budgetManager.GetTransactionsByMonth(SelectedDate);
-            Transactions = new ObservableCollection<Transaction>(transactions);
-            UpdateSummary();
+            Transactions.Clear();
+            foreach (var transaction in transactions)
+            {
+                Transactions.Add(transaction);
+            }
+
+            FilterTransactions();
         }
 
         private void LoadMonthlySummary()
         {
-            CurrentMonthSummary = _budgetManager.GetMonthlySummary(SelectedDate);
+            UpdateSummary();
         }
 
         private void FilterTransactions()
         {
             var allTransactions = _budgetManager.GetTransactionsByMonth(SelectedDate);
-            
-            // Filtrowanie według kategorii
+            var filteredTransactions = allTransactions.AsEnumerable();
+
             if (SelectedCategoryFilter != null)
             {
-                allTransactions = allTransactions.Where(t => t.CategoryId == SelectedCategoryFilter.Id).ToList();
+                filteredTransactions = filteredTransactions.Where(t => t.CategoryId == SelectedCategoryFilter.Id);
             }
-            
-            // Filtrowanie według tekstu wyszukiwania
-            if (!string.IsNullOrWhiteSpace(SearchText))
+
+            if (!string.IsNullOrEmpty(SearchText))
             {
-                allTransactions = allTransactions.Where(t => 
+                filteredTransactions = filteredTransactions.Where(t =>
                     t.Description.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    t.Category.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)).ToList();
+                    t.Category.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
             }
-            
-            Transactions = new ObservableCollection<Transaction>(allTransactions);
+
+            Transactions.Clear();
+            foreach (var transaction in filteredTransactions)
+            {
+                Transactions.Add(transaction);
+            }
+
             UpdateSummary();
         }
 
         private void UpdateSummary()
         {
-            if (Transactions == null) return;
-            
-            TotalIncome = Transactions.Where(t => t.IsIncome).Sum(t => t.Amount);
-            TotalExpenses = Transactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
+            var currentTransactions = Transactions.ToList();
+            TotalIncome = currentTransactions.Where(t => t.IsIncome).Sum(t => t.Amount);
+            TotalExpenses = currentTransactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
             Balance = TotalIncome - TotalExpenses;
-        }
-
-        #endregion
-
-        #region Helper Methods - Te metody powinny być zaimplementowane w warstwie widoku
-
-        private Transaction ShowTransactionDialog(TransactionViewModel viewModel)
-        {
-            // Implementacja zależna od warstwy widoku
-            // Zwraca nową/zaktualizowaną transakcję lub null jeśli anulowano
-            throw new NotImplementedException("Metoda powinna być zaimplementowana w warstwie widoku");
-        }
-
-        private bool ShowConfirmationDialog(string message)
-        {
-            // Implementacja zależna od warstwy widoku
-            throw new NotImplementedException("Metoda powinna być zaimplementowana w warstwie widoku");
-        }
-
-        private string GetSaveFilePath(string extension)
-        {
-            // Implementacja zależna od warstwy widoku
-            throw new NotImplementedException("Metoda powinna być zaimplementowana w warstwie widoku");
-        }
-
-        private void ShowReportDialog(string report)
-        {
-            // Implementacja zależna od warstwy widoku
-            throw new NotImplementedException("Metoda powinna być zaimplementowana w warstwie widoku");
-        }
-
-        #endregion
-
-        #region Cleanup
-
-        private bool _disposed;
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed)
-            {
-                if (disposing)
-                {
-                    _budgetManager?.Dispose();
-                }
-                _disposed = true;
-            }
         }
 
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
+            _budgetManager?.Dispose();
         }
-
-        #endregion
     }
 }

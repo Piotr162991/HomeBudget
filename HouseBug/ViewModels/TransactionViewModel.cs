@@ -27,7 +27,6 @@ namespace HouseBug.ViewModels
             InitializeFromTransaction(transaction);
         }
 
-
         #region Properties
 
         public List<Category> Categories { get; }
@@ -164,6 +163,19 @@ namespace HouseBug.ViewModels
 
         #endregion
 
+        #region Public Methods
+
+        // Dodaj tę metodę - to ona jest potrzebna w MainWindow!
+        public Transaction GetTransaction()
+        {
+            if (!IsValid())
+                return null;
+
+            return CreateTransactionFromInput();
+        }
+
+        #endregion
+
         #region Validation
 
         public string Error => string.Empty;
@@ -255,7 +267,8 @@ namespace HouseBug.ViewModels
                 CategoryId = SelectedCategory.Id,
                 Category = SelectedCategory,
                 IsIncome = IsIncome,
-                CreatedAt = IsEditMode ? _originalTransaction.CreatedAt : DateTime.Now
+                CreatedAt = IsEditMode ? _originalTransaction.CreatedAt : DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
         }
 
