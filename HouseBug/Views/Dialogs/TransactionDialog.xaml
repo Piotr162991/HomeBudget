@@ -1,0 +1,135 @@
+﻿<Window x:Class="HouseBug.Views.Dialogs.TransactionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:HouseBug.ViewModels"
+        Title="{Binding WindowTitle}" 
+        Height="450" Width="500"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Styles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Formularz -->
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Typ transakcji -->
+                <TextBlock Text="Typ transakcji:" Style="{StaticResource LabelStyle}"/>
+                <StackPanel Orientation="Horizontal" Margin="5,0,5,15">
+                    <RadioButton Content="Wydatek" 
+                                IsChecked="{Binding IsExpense}" 
+                                GroupName="TransactionType"
+                                Style="{StaticResource ModernCheckBoxStyle}"
+                                Margin="0,0,20,0"/>
+                    <RadioButton Content="Przychód" 
+                                IsChecked="{Binding IsIncome}" 
+                                GroupName="TransactionType"
+                                Style="{StaticResource ModernCheckBoxStyle}"/>
+                </StackPanel>
+
+                <!-- Kwota -->
+                <TextBlock Text="Kwota:" Style="{StaticResource LabelStyle}"/>
+                <TextBox Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
+                        Style="{StaticResource ModernTextBoxStyle}"
+                        ToolTip="Wprowadź kwotę transakcji"/>
+
+                <!-- Opis -->
+                <TextBlock Text="Opis:" Style="{StaticResource LabelStyle}"/>
+                <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
+                        Style="{StaticResource ModernTextBoxStyle}"
+                        MaxLength="200"
+                        ToolTip="Wprowadź opis transakcji"/>
+
+                <!-- Data -->
+                <TextBlock Text="Data:" Style="{StaticResource LabelStyle}"/>
+                <DatePicker SelectedDate="{Binding Date, ValidatesOnDataErrors=True}"
+                           Style="{StaticResource ModernDatePickerStyle}"
+                           ToolTip="Wybierz datę transakcji"/>
+
+                <!-- Kategoria -->
+                <TextBlock Text="Kategoria:" Style="{StaticResource LabelStyle}"/>
+                <ComboBox ItemsSource="{Binding Categories}"
+                          SelectedItem="{Binding SelectedCategory}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="12" Height="12" 
+                                        Background="{Binding Color}" 
+                                        CornerRadius="6" 
+                                        Margin="0,0,8,0"/>
+                                <TextBlock Text="{Binding Name}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Komunikat walidacji -->
+        <TextBlock Grid.Row="1" 
+                  Text="{Binding ValidationMessage}"
+                  Foreground="{StaticResource DangerBrush}"
+                  FontWeight="SemiBold"
+                  Margin="0,10"
+                  TextWrapping="Wrap"
+                  Visibility="{Binding ValidationMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
+
+        <!-- Przyciski -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="1" 
+                   Content="Zapisz" 
+                   Command="{Binding SaveCommand}"
+                   Style="{StaticResource SuccessButtonStyle}"
+                   Width="80"
+                   Margin="0,0,10,0"
+                   IsDefault="True"/>
+
+            <Button Grid.Column="2" 
+                   Content="Anuluj" 
+                   Command="{Binding CancelCommand}"
+                   Style="{StaticResource PrimaryButtonStyle}"
+                   Width="80"
+                   IsCancel="True"/>
+        </Grid>
+
+        <!-- Loading overlay -->
+        <Grid Grid.RowSpan="3" 
+              Background="#80000000" 
+              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" 
+                   CornerRadius="8" 
+                   Padding="20" 
+                   HorizontalAlignment="Center" 
+                   VerticalAlignment="Center">
+                <StackPanel>
+                    <ProgressBar IsIndeterminate="True" 
+                                Height="15" 
+                                Width="150" 
+                                Margin="0,0,0,10"/>
+                    <TextBlock Text="{Binding BusyMessage}" 
+                              HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
