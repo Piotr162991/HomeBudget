@@ -40,8 +40,10 @@ namespace HouseBug.Services
                 report.AppendLine("WYDATKI WEDŁUG KATEGORII:");
                 foreach (var category in summary.CategorySummaries.OrderByDescending(c => c.Amount))
                 {
-                    report.AppendLine($"{category.CategoryName,-20} {category.Amount,10:C} ({category.Percentage,5:F1}%)");
+                    report.AppendLine(
+                        $"{category.CategoryName,-20} {category.Amount,10:C} ({category.Percentage,5:F1}%)");
                 }
+
                 report.AppendLine();
             }
 
@@ -49,11 +51,12 @@ namespace HouseBug.Services
             report.AppendLine("LISTA TRANSAKCJI:");
             report.AppendLine($"{"Data",-12} {"Kategoria",-15} {"Opis",-30} {"Kwota",10}");
             report.AppendLine(new string('-', 70));
-            
+
             foreach (var transaction in transactions.OrderBy(t => t.Date))
             {
                 var amount = transaction.IsIncome ? $"+{transaction.Amount:C}" : $"-{transaction.Amount:C}";
-                report.AppendLine($"{transaction.Date:dd.MM.yyyy,-12} {transaction.Category.Name,-15} {transaction.Description,-30} {amount,10}");
+                report.AppendLine(
+                    $"{transaction.Date:dd.MM.yyyy,-12} {transaction.Category.Name,-15} {transaction.Description,-30} {amount,10}");
             }
 
             return report.ToString();
@@ -64,7 +67,7 @@ namespace HouseBug.Services
             try
             {
                 using var writer = new StreamWriter(filePath, false, Encoding.UTF8);
-                
+
                 // Nagłówki
                 await writer.WriteLineAsync("Data,Kategoria,Opis,Kwota,Typ");
 
@@ -72,11 +75,11 @@ namespace HouseBug.Services
                 foreach (var transaction in transactions)
                 {
                     var line = $"{transaction.Date:yyyy-MM-dd}," +
-                              $"\"{transaction.Category.Name}\"," +
-                              $"\"{transaction.Description}\"," +
-                              $"{transaction.Amount}," +
-                              $"{(transaction.IsIncome ? "Przychód" : "Wydatek")}";
-                    
+                               $"\"{transaction.Category.Name}\"," +
+                               $"\"{transaction.Description}\"," +
+                               $"{transaction.Amount}," +
+                               $"{(transaction.IsIncome ? "Przychód" : "Wydatek")}";
+
                     await writer.WriteLineAsync(line);
                 }
 
@@ -91,7 +94,7 @@ namespace HouseBug.Services
         public string GenerateYearlyReport(int year)
         {
             var yearlySummary = _budgetManager.GetYearlySummary(year);
-            
+
             var report = new StringBuilder();
             report.AppendLine($"=== RAPORT ROCZNY - {year} ===");
             report.AppendLine();
@@ -115,9 +118,9 @@ namespace HouseBug.Services
             foreach (var monthlySummary in yearlySummary)
             {
                 report.AppendLine($"{monthlySummary.FormattedPeriod,-15} " +
-                                $"{monthlySummary.TotalIncome,12:C} " +
-                                $"{monthlySummary.TotalExpenses,12:C} " +
-                                $"{monthlySummary.Balance,12:C}");
+                                  $"{monthlySummary.TotalIncome,12:C} " +
+                                  $"{monthlySummary.TotalExpenses,12:C} " +
+                                  $"{monthlySummary.Balance,12:C}");
             }
 
             // Najwyższe wydatki według kategorii
@@ -175,7 +178,8 @@ namespace HouseBug.Services
                 ["Średni dzienny wydatek"] = expenses / Math.Max(1, (endDate - startDate).Days),
                 ["Największy wydatek"] = transactions.Where(t => !t.IsIncome).DefaultIfEmpty().Max(t => t?.Amount ?? 0),
                 ["Największy przychód"] = transactions.Where(t => t.IsIncome).DefaultIfEmpty().Max(t => t?.Amount ?? 0),
-                ["Najczęstsza kategoria"] = transactions.GroupBy(t => t.Category.Name).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key ?? "Brak"
+                ["Najczęstsza kategoria"] = transactions.GroupBy(t => t.Category.Name).OrderByDescending(g => g.Count())
+                    .FirstOrDefault()?.Key ?? "Brak"
             };
         }
     }

@@ -12,6 +12,10 @@
     <SolidColorBrush x:Key="BorderBrush" Color="#BDC3C7"/>
     <SolidColorBrush x:Key="TextBrush" Color="#2C3E50"/>
     <SolidColorBrush x:Key="MutedTextBrush" Color="#7F8C8D"/>
+    
+    <Style TargetType="MenuItem">
+        <Setter Property="Foreground" Value="Black"/>
+    </Style>
 
     <!-- Czcionki -->
     <FontFamily x:Key="PrimaryFont">Segoe UI</FontFamily>

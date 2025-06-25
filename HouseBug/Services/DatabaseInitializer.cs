@@ -42,7 +42,6 @@ namespace HouseBug.Services
             {
                 Console.WriteLine($"Błąd podczas inicjalizacji bazy danych: {ex.Message}");
                 
-                // Jeśli błąd dotyczy konfliktów tabel, spróbuj usunąć bazę i stworzyć na nowo
                 if (ex.Message.Contains("already exists"))
                 {
                     Console.WriteLine("Wykryto konflikt tabel. Usuwanie starej bazy...");

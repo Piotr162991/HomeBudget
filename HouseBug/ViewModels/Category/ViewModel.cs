@@ -14,6 +14,9 @@ namespace HouseBug.ViewModels
     public class CategoryViewModel : ViewModelBase, IDataErrorInfo
     {
         private readonly BudgetManager _budgetManager;
+        public CategoryViewModel() : this(new BudgetManager())
+        {
+        }
 
         public CategoryViewModel(BudgetManager budgetManager)
         {
@@ -118,6 +121,9 @@ namespace HouseBug.ViewModels
         public ICommand DeleteCategoryCommand { get; private set; }
         public ICommand CancelEditCommand { get; private set; }
         public ICommand RefreshCommand { get; private set; }
+        public ICommand SelectColorCommand { get; private set; }
+        public ICommand SelectIconCommand { get; private set; }
+
 
         private void InitializeCommands()
         {
@@ -126,6 +132,9 @@ namespace HouseBug.ViewModels
             DeleteCategoryCommand = new RelayCommand(DeleteCategory, () => SelectedCategory != null && !IsEditMode);
             CancelEditCommand = new RelayCommand(CancelEdit);
             RefreshCommand = new RelayCommand(RefreshCategories);
+            SelectColorCommand = new RelayCommand<string>(SelectColor);
+            SelectIconCommand = new RelayCommand<string>(SelectIcon);
+
         }
 
         #endregion
@@ -185,6 +194,22 @@ namespace HouseBug.ViewModels
             finally
             {
                 SetBusy(false);
+            }
+        }
+        
+        private void SelectColor(string color)
+        {
+            if (!string.IsNullOrEmpty(color))
+            {
+                Color = color;
+            }
+        }
+
+        private void SelectIcon(string icon)
+        {
+            if (!string.IsNullOrEmpty(icon))
+            {
+                Icon = icon;
             }
         }
 
@@ -360,8 +385,13 @@ namespace HouseBug.ViewModels
 
         private bool ShowConfirmationDialog(string message)
         {
-            // Implementacja zależna od warstwy widoku
-            throw new NotImplementedException("Metoda powinna być zaimplementowana w warstwie widoku");
+            var result = System.Windows.MessageBox.Show(
+                message, 
+                "Potwierdzenie", 
+                System.Windows.MessageBoxButton.YesNo, 
+                System.Windows.MessageBoxImage.Question);
+    
+            return result == System.Windows.MessageBoxResult.Yes;
         }
 
         #endregion

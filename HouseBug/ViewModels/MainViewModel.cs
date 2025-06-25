@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using HouseBug.Models;
 using HouseBug.Services;
@@ -14,10 +17,12 @@ namespace HouseBug.ViewModels
     public class MainViewModel : ViewModelBase, IDisposable
     {
         private readonly BudgetManager _budgetManager;
+        private readonly ReportGenerator _reportGenerator;
 
         public MainViewModel()
         {
             _budgetManager = new BudgetManager();
+            _reportGenerator = new ReportGenerator(new BudgetManager());
 
             Transactions = new ObservableCollection<Transaction>();
             Categories = new ObservableCollection<Category>();
@@ -141,6 +146,8 @@ namespace HouseBug.ViewModels
         public ICommand ClearFiltersCommand { get; private set; }
         public ICommand ShowPreviousMonthCommand { get; private set; }
         public ICommand ShowNextMonthCommand { get; private set; }
+        public ICommand GenerateYearlyReportCommand { get; private set; }
+
 
         private void InitializeCommands()
         {
@@ -153,6 +160,7 @@ namespace HouseBug.ViewModels
             ClearFiltersCommand = new RelayCommand(ClearFilters);
             ShowPreviousMonthCommand = new RelayCommand(ShowPreviousMonth);
             ShowNextMonthCommand = new RelayCommand(ShowNextMonth);
+            GenerateYearlyReportCommand = new RelayCommand(GenerateYearlyReport);
         }
 
         private void AddTransaction()
@@ -423,5 +431,43 @@ namespace HouseBug.ViewModels
         {
             _budgetManager?.Dispose();
         }
+        
+        private void GenerateYearlyReport()
+        {
+            int year = DateTime.Now.Year;
+
+            var result = MessageBox.Show(
+                $"Wygenerować raport roczny za rok {year}?",
+                "Generuj raport roczny",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+            {
+                StatusMessage = "Anulowano generowanie raportu rocznego.";
+                return;
+            }
+
+            string report = _reportGenerator.GenerateYearlyReport(year);
+
+            var sfd = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Zapisz raport roczny",
+                FileName = $"RaportRoczny_{year}.txt",
+                Filter = "Plik tekstowy (*.txt)|*.txt|Wszystkie pliki (*.*)|*.*"
+            };
+
+            if (sfd.ShowDialog() == true)
+            {
+                File.WriteAllText(sfd.FileName, report, Encoding.UTF8);
+                StatusMessage = $"Raport roczny za {year} został zapisany.";
+            }
+            else
+            {
+                StatusMessage = "Anulowano zapis raportu rocznego.";
+            }
+        }
+
+
     }
 }
