@@ -134,7 +134,6 @@
         <Setter Property="Background" Value="White"/>
     </Style>
 
-    <!-- Style dla DataGrid -->
     <Style x:Key="ModernDataGridStyle" TargetType="DataGrid">
         <Setter Property="Background" Value="White"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
@@ -148,8 +147,6 @@
         <Setter Property="CanUserResizeRows" Value="False"/>
         <Setter Property="HeadersVisibility" Value="Column"/>
     </Style>
-
-    <!-- Style dla nagłówków DataGrid -->
     <Style x:Key="DataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
         <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
         <Setter Property="Foreground" Value="White"/>

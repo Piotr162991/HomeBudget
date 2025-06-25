@@ -15,7 +15,6 @@ namespace HouseBug.Views
         {
             InitializeComponent();
             
-            // Podłącz event handlery
             ViewModel.ShowTransactionDialogRequested += OnShowTransactionDialogRequested;
             ViewModel.ShowConfirmationDialogRequested += OnShowConfirmationDialogRequested;
             ViewModel.GetSaveFilePathRequested += OnGetSaveFilePathRequested;
@@ -73,7 +72,6 @@ namespace HouseBug.Views
             };
             categoryWindow.ShowDialog();
             
-            // Odśwież kategorie po zamknięciu okna
             ViewModel.RefreshCommand.Execute(null);
         }
 
@@ -85,7 +83,6 @@ namespace HouseBug.Views
 
         protected override void OnClosed(EventArgs e)
         {
-            // Odłącz event handlery
             if (ViewModel != null)
             {
                 ViewModel.ShowTransactionDialogRequested -= OnShowTransactionDialogRequested;

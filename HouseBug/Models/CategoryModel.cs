@@ -25,7 +25,6 @@ namespace HouseBug.Models
         
         public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
         
-        // Metoda pomocnicza
         public override string ToString()
         {
             return Name;

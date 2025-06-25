@@ -19,7 +19,6 @@ namespace HouseBug.Services
         {
             optionsBuilder.UseSqlite("Data Source=budget.db");
             
-            // Włącz szczegółowe logowanie w trybie debugowania
             #if DEBUG
             optionsBuilder.EnableSensitiveDataLogging();
             optionsBuilder.LogTo(Console.WriteLine);
@@ -28,21 +27,18 @@ namespace HouseBug.Services
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Konfiguracja relacji Transaction -> Category
             modelBuilder.Entity<Transaction>()
                 .HasOne(t => t.Category)
                 .WithMany(c => c.Transactions)
                 .HasForeignKey(t => t.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Konfiguracja relacji MonthlyBudget -> Category
             modelBuilder.Entity<MonthlyBudget>()
                 .HasOne(mb => mb.Category)
                 .WithMany()
                 .HasForeignKey(mb => mb.CategoryId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Indeksy dla lepszej wydajności
             modelBuilder.Entity<Transaction>()
                 .HasIndex(t => t.Date)
                 .HasDatabaseName("IX_Transaction_Date");
@@ -56,13 +52,11 @@ namespace HouseBug.Services
                 .HasDatabaseName("IX_MonthlyBudget_Period_Category")
                 .IsUnique();
 
-            // Seeding danych domyślnych
             SeedData(modelBuilder);
         }
 
         private void SeedData(ModelBuilder modelBuilder)
         {
-            // Domyślne kategorie
             modelBuilder.Entity<Category>().HasData(
                 new Category { Id = 1, Name = "Jedzenie", Description = "Zakupy spożywcze i restauracje", Color = "#E74C3C", Icon = "🍕" },
                 new Category { Id = 2, Name = "Transport", Description = "Paliwo, bilety komunikacji publicznej", Color = "#3498DB", Icon = "🚗" },
@@ -74,7 +68,6 @@ namespace HouseBug.Services
                 new Category { Id = 8, Name = "Edukacja", Description = "Kursy, książki, szkolenia", Color = "#34495E", Icon = "📚" }
             );
 
-            // Domyślne ustawienia aplikacji
             modelBuilder.Entity<AppSettings>().HasData(
                 new AppSettings 
                 { 

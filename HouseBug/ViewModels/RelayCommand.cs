@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Input;
 
-namespace HouseBug.ViewModels.Base
+namespace HouseBug.ViewModels
 {
     public class RelayCommand : ICommand
     {

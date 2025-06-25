@@ -27,12 +27,11 @@ namespace HouseBug.Models
         
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         
-        // Właściwości pomocnicze
         [NotMapped]
         public string MonthName => new DateTime(Year, Month, 1).ToString("MMMM yyyy");
         
         [NotMapped]
-        public decimal SpentAmount { get; set; } // Będzie obliczane dynamicznie
+        public decimal SpentAmount { get; set; }
         
         [NotMapped]
         public decimal RemainingAmount => PlannedAmount - SpentAmount;

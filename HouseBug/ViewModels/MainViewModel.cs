@@ -32,12 +32,10 @@ namespace HouseBug.ViewModels
             LoadData();
         }
 
-        // Event zamiast metody
         public event Func<TransactionViewModel, Transaction?> ShowTransactionDialogRequested;
         public event Func<string, bool> ShowConfirmationDialogRequested;
         public event Func<string, string> GetSaveFilePathRequested;
 
-        // Properties (pozostaw bez zmian)
         private ObservableCollection<Transaction> _transactions;
 
         public ObservableCollection<Transaction> Transactions
@@ -137,7 +135,6 @@ namespace HouseBug.ViewModels
             set => SetProperty(ref _statusMessage, value);
         }
 
-        // Commands
         public ICommand AddTransactionCommand { get; private set; }
         public ICommand EditTransactionCommand { get; private set; }
         public ICommand DeleteTransactionCommand { get; private set; }
@@ -244,7 +241,6 @@ namespace HouseBug.ViewModels
 
                 try
                 {
-                    // Prosty eksport do CSV
                     await ExportTransactionsToCsvAsync(Transactions.ToList(), filePath);
                     StatusMessage = $"Dane wyeksportowane do: {filePath}";
                 }
@@ -263,10 +259,8 @@ namespace HouseBug.ViewModels
             {
                 using var writer = new System.IO.StreamWriter(filePath);
 
-                // Nagłówki
                 writer.WriteLine("Data,Kategoria,Opis,Kwota,Typ");
 
-                // Dane
                 foreach (var transaction in transactions)
                 {
                     var line = $"{transaction.Date:yyyy-MM-dd}," +
@@ -282,7 +276,6 @@ namespace HouseBug.ViewModels
 
         private void GenerateReport()
         {
-            // Tworzymy i pokazujemy okno dialogowe do wyboru typu raportu
             var reportDialog = new Views.Dialogs.ReportDialog(_reportGenerator, _budgetManager)
             {
                 Owner = Application.Current.MainWindow
@@ -296,38 +289,6 @@ namespace HouseBug.ViewModels
             }
         }
 
-        private string GenerateSimpleReport()
-        {
-            var monthName = SelectedDate.ToString("MMMM yyyy");
-            var report = $"RAPORT MIESIĘCZNY - {monthName.ToUpper()}\n";
-            report += new string('=', 50) + "\n\n";
-
-            report += $"Przychody: {TotalIncome:C}\n";
-            report += $"Wydatki: {TotalExpenses:C}\n";
-            report += $"Saldo: {Balance:C}\n\n";
-
-            if (Categories?.Any() == true)
-            {
-                report += "WYDATKI WEDŁUG KATEGORII:\n";
-                report += new string('-', 30) + "\n";
-
-                foreach (var category in Categories)
-                {
-                    var categoryExpenses = Transactions
-                        .Where(t => !t.IsIncome && t.CategoryId == category.Id)
-                        .Sum(t => t.Amount);
-
-                    if (categoryExpenses > 0)
-                    {
-                        report += $"{category.Name}: {categoryExpenses:C}\n";
-                    }
-                }
-            }
-
-            report += $"\nRaport wygenerowany: {DateTime.Now:dd.MM.yyyy HH:mm}";
-
-            return report;
-        }
 
         private void ClearFilters()
         {
@@ -429,18 +390,12 @@ namespace HouseBug.ViewModels
             _budgetManager?.Dispose();
         }
         
-        // Funkcjonalność generowania raportu rocznego została zintegrowana w oknie dialogowym ReportDialog
         private void GenerateYearlyReport()
         {
-            // Tworzymy i pokazujemy okno dialogowe do wyboru typu raportu
             var reportDialog = new Views.Dialogs.ReportDialog(_reportGenerator, _budgetManager)
             {
                 Owner = Application.Current.MainWindow
             };
-
-            // Dodaj metodę do klasy ReportDialog zamiast bezpośredniego dostępu do kontrolki
-            reportDialog.SetYearlyReportAsDefault();
-
             var result = reportDialog.ShowDialog();
 
             if (result == true)

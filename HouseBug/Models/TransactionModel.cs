@@ -32,7 +32,6 @@ namespace HouseBug.Models
         
         public DateTime? UpdatedAt { get; set; }
         
-        // Właściwości pomocnicze (nie mapowane do bazy)
         [NotMapped]
         public string TransactionType => IsIncome ? "Przychód" : "Wydatek";
         

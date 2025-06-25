@@ -13,7 +13,6 @@ namespace HouseBug.Views.Dialogs
             InitializeComponent();
             DataContext = viewModel;
 
-            // Subskrypcja wydarzeń z ViewModel
             viewModel.TransactionSaved += OnTransactionSaved;
             viewModel.TransactionCancelled += OnTransactionCancelled;
         }

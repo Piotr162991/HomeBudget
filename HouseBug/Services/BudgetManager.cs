@@ -25,12 +25,6 @@ namespace HouseBug.Services
             return transaction;
         }
 
-        public Transaction AddTransaction(Transaction transaction)
-        {
-            _context.Transactions.Add(transaction);
-            _context.SaveChanges();
-            return transaction;
-        }
 
         public async Task<bool> UpdateTransactionAsync(Transaction transaction)
         {
@@ -153,13 +147,11 @@ namespace HouseBug.Services
                 var category = await _context.Categories.FindAsync(categoryId);
                 if (category != null)
                 {
-                    // Sprawdź czy kategoria ma przypisane transakcje
                     var hasTransactions = await _context.Transactions
                         .AnyAsync(t => t.CategoryId == categoryId);
 
                     if (hasTransactions)
                     {
-                        // Zamiast usuwać, deaktywuj kategorię
                         category.IsActive = false;
                         await _context.SaveChangesAsync();
                     }
@@ -280,7 +272,6 @@ namespace HouseBug.Services
                 .Where(mb => mb.Month == month && mb.Year == year)
                 .ToList();
 
-            // Oblicz rzeczywiste wydatki dla każdego budżetu
             var startDate = new DateTime(year, month, 1);
             var endDate = startDate.AddMonths(1).AddDays(-1);
 

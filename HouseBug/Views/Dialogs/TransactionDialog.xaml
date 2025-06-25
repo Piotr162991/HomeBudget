@@ -23,10 +23,8 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Formularz -->
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- Typ transakcji -->
                 <Label Grid.Row="0" Content="Typ transakcji:" FontWeight="Bold"/>
                 <StackPanel Grid.Row="1" Orientation="Horizontal">
                     <RadioButton Content="Wydatek" 
@@ -36,28 +34,20 @@
                                  IsChecked="{Binding IsIncome}"
                                  GroupName="TransactionType"/>
                 </StackPanel>
-
-
-                <!-- Kwota -->
                 <TextBlock Text="Kwota:" Style="{StaticResource LabelStyle}"/>
                 <TextBox Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
                         Style="{StaticResource ModernTextBoxStyle}"
                         ToolTip="Wprowadź kwotę transakcji"/>
 
-                <!-- Opis -->
                 <TextBlock Text="Opis:" Style="{StaticResource LabelStyle}"/>
                 <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
                         Style="{StaticResource ModernTextBoxStyle}"
                         MaxLength="200"
                         ToolTip="Wprowadź opis transakcji"/>
-
-                <!-- Data -->
                 <TextBlock Text="Data:" Style="{StaticResource LabelStyle}"/>
                 <DatePicker SelectedDate="{Binding Date, ValidatesOnDataErrors=True}"
                            Style="{StaticResource ModernDatePickerStyle}"
                            ToolTip="Wybierz datę transakcji"/>
-
-                <!-- Kategoria -->
                 <TextBlock Text="Kategoria:" Style="{StaticResource LabelStyle}"/>
                 <ComboBox ItemsSource="{Binding Categories}"
                           SelectedItem="{Binding SelectedCategory}">

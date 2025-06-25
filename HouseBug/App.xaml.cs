@@ -18,7 +18,6 @@ namespace HouseBug
 
         private void ConfigureServices(ServiceCollection services)
         {
-            // Rejestracja usług
             services.AddSingleton<IDialogService, DialogService>();
             services.AddTransient<BudgetManager>();
             services.AddTransient<ReportGenerator>();

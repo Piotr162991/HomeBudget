@@ -215,7 +215,6 @@ namespace HouseBug.ViewModels
             }
             else
             {
-                // Wartości domyślne dla nowej transakcji
                 Amount = 0;
                 Description = string.Empty;
                 Date = DateTime.Today;

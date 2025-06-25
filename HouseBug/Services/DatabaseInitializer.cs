@@ -14,18 +14,15 @@ namespace HouseBug.Services
             {
                 using var context = new BudgetContext();
                 
-                // Sprawdź czy baza istnieje
                 var canConnect = context.Database.CanConnect();
                 
                 if (!canConnect)
                 {
-                    // Baza nie istnieje - zastosuj migracje
                     await context.Database.MigrateAsync();
                     Console.WriteLine("Baza danych została utworzona z migracjami.");
                 }
                 else
                 {
-                    // Baza istnieje - sprawdź migracje
                     var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
                     if (pendingMigrations.Any())
                     {
@@ -49,7 +46,7 @@ namespace HouseBug.Services
                     {
                         File.Delete("budget.db");
                         Console.WriteLine("Stara baza została usunięta. Ponowne tworzenie...");
-                        await InitializeAsync(); // Rekurencyjne wywołanie
+                        await InitializeAsync(); 
                     }
                 }
                 else
@@ -59,7 +56,6 @@ namespace HouseBug.Services
             }
         }
 
-        // Reszta metod bez zmian...
         public static bool DatabaseExists()
         {
             try

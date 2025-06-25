@@ -26,7 +26,6 @@ namespace HouseBug.Services
             report.AppendLine($"=== RAPORT MIESIĘCZNY - {summary.FormattedPeriod.ToUpper()} ===");
             report.AppendLine();
 
-            // Podsumowanie finansowe
             report.AppendLine("PODSUMOWANIE FINANSOWE:");
             report.AppendLine($"Przychody:     {summary.TotalIncome:C}");
             report.AppendLine($"Wydatki:       {summary.TotalExpenses:C}");
@@ -34,7 +33,6 @@ namespace HouseBug.Services
             report.AppendLine($"Status:        {summary.BalanceStatus}");
             report.AppendLine();
 
-            // Wydatki według kategorii
             if (summary.CategorySummaries.Any())
             {
                 report.AppendLine("WYDATKI WEDŁUG KATEGORII:");
@@ -47,7 +45,6 @@ namespace HouseBug.Services
                 report.AppendLine();
             }
 
-            // Lista transakcji
             report.AppendLine("LISTA TRANSAKCJI:");
             report.AppendLine($"{"Data",-12} {"Kategoria",-15} {"Opis",-30} {"Kwota",10}");
             report.AppendLine(new string('-', 70));
@@ -68,10 +65,8 @@ namespace HouseBug.Services
             {
                 using var writer = new StreamWriter(filePath, false, Encoding.UTF8);
 
-                // Nagłówki
                 await writer.WriteLineAsync("Data,Kategoria,Opis,Kwota,Typ");
 
-                // Dane
                 foreach (var transaction in transactions)
                 {
                     var line = $"{transaction.Date:yyyy-MM-dd}," +
@@ -99,7 +94,6 @@ namespace HouseBug.Services
             report.AppendLine($"=== RAPORT ROCZNY - {year} ===");
             report.AppendLine();
 
-            // Podsumowanie roczne
             var totalIncome = yearlySummary.Sum(s => s.TotalIncome);
             var totalExpenses = yearlySummary.Sum(s => s.TotalExpenses);
             var totalBalance = totalIncome - totalExpenses;
@@ -110,7 +104,6 @@ namespace HouseBug.Services
             report.AppendLine($"Saldo roczne:      {totalBalance:C}");
             report.AppendLine();
 
-            // Podsumowanie miesięczne
             report.AppendLine("PODSUMOWANIE MIESIĘCZNE:");
             report.AppendLine($"{"Miesiąc",-15} {"Przychody",12} {"Wydatki",12} {"Saldo",12}");
             report.AppendLine(new string('-', 55));
@@ -123,7 +116,6 @@ namespace HouseBug.Services
                                   $"{monthlySummary.Balance,12:C}");
             }
 
-            // Najwyższe wydatki według kategorii
             var allCategories = yearlySummary
                 .SelectMany(s => s.CategorySummaries)
                 .GroupBy(cs => cs.CategoryName)

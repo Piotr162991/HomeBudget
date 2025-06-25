@@ -25,16 +25,13 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Nagłówek -->
             <TextBlock Grid.Row="0" 
                        Text="GENEROWANIE RAPORTU" 
                        Style="{StaticResource HeaderLabelStyle}"
                        HorizontalAlignment="Center"
                        Margin="0,0,0,15"/>
 
-            <!-- Zawartość główna -->
             <StackPanel Grid.Row="1" Margin="10">
-                <!-- Typ raportu -->
                 <TextBlock Text="Typ raportu:" Style="{StaticResource LabelStyle}"/>
                 <ComboBox x:Name="ReportTypeComboBox" 
                           Style="{StaticResource ModernComboBoxStyle}"
@@ -42,8 +39,6 @@
                     <ComboBoxItem Content="Raport miesięczny" Tag="Monthly"/>
                     <ComboBoxItem Content="Raport roczny" Tag="Yearly"/>
                 </ComboBox>
-
-                <!-- Opcje dla raportu miesięcznego -->
                 <StackPanel x:Name="MonthlyOptionsPanel">
                     <TextBlock Text="Wybierz miesiąc:" Style="{StaticResource LabelStyle}"/>
                     <DatePicker x:Name="MonthPicker"
@@ -52,8 +47,6 @@
                                 DisplayDateEnd="{Binding MaxDate}"
                                 Margin="0,0,0,15"/>
                 </StackPanel>
-
-                <!-- Opcje dla raportu rocznego -->
                 <StackPanel x:Name="YearlyOptionsPanel" Visibility="Collapsed">
                     <TextBlock Text="Wybierz rok:" Style="{StaticResource LabelStyle}"/>
                     <ComboBox x:Name="YearComboBox"
@@ -61,8 +54,6 @@
                               Margin="0,0,0,15"/>
                 </StackPanel>
             </StackPanel>
-
-            <!-- Przyciski akcji -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
                 <Button Content="Anuluj" Click="CancelButton_Click"
                         Style="{StaticResource PrimaryButtonStyle}"
