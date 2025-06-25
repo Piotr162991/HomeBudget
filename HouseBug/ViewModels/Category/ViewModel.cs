@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -11,16 +9,19 @@ using HouseBug.ViewModels.Base;
 
 namespace HouseBug.ViewModels
 {
-    public class CategoryViewModel : ViewModelBase, IDataErrorInfo
+    public class CategoryViewModel : CrudViewModelBase<Category>
     {
         private readonly BudgetManager _budgetManager;
-        public CategoryViewModel() : this(new BudgetManager())
+        private readonly IDialogService _dialogService;
+
+        public CategoryViewModel() : this(new BudgetManager(), new DialogService())
         {
         }
 
-        public CategoryViewModel(BudgetManager budgetManager)
+        public CategoryViewModel(BudgetManager budgetManager, IDialogService dialogService)
         {
             _budgetManager = budgetManager;
+            _dialogService = dialogService;
             InitializeCommands();
             LoadCategories();
         }
@@ -30,7 +31,7 @@ namespace HouseBug.ViewModels
         private ObservableCollection<Category> _categories;
         public ObservableCollection<Category> Categories
         {
-            get => _categories;
+            get => _categories ??= new ObservableCollection<Category>();
             set => SetProperty(ref _categories, value);
         }
 
@@ -42,14 +43,12 @@ namespace HouseBug.ViewModels
             {
                 if (SetProperty(ref _selectedCategory, value))
                 {
-                    PopulateEditForm();
+                    PopulateFormFromItem(value);
                 }
             }
         }
 
         private string _name;
-        [Required(ErrorMessage = "Nazwa jest wymagana")]
-        [StringLength(50, ErrorMessage = "Nazwa nie może być dłuższa niż 50 znaków")]
         public string Name
         {
             get => _name;
@@ -57,7 +56,6 @@ namespace HouseBug.ViewModels
         }
 
         private string _description;
-        [StringLength(200, ErrorMessage = "Opis nie może być dłuższy niż 200 znaków")]
         public string Description
         {
             get => _description;
@@ -85,20 +83,6 @@ namespace HouseBug.ViewModels
             set => SetProperty(ref _isActive, value);
         }
 
-        private bool _isEditMode;
-        public bool IsEditMode
-        {
-            get => _isEditMode;
-            set => SetProperty(ref _isEditMode, value);
-        }
-
-        private string _validationMessage;
-        public string ValidationMessage
-        {
-            get => _validationMessage;
-            set => SetProperty(ref _validationMessage, value);
-        }
-
         // Predefiniowane kolory
         public string[] PredefinedColors { get; } = 
         {
@@ -124,46 +108,37 @@ namespace HouseBug.ViewModels
         public ICommand SelectColorCommand { get; private set; }
         public ICommand SelectIconCommand { get; private set; }
 
-
         private void InitializeCommands()
         {
-            AddCategoryCommand = new RelayCommand(StartAddCategory);
-            SaveCategoryCommand = new RelayCommand(SaveCategory, CanSaveCategory);
-            DeleteCategoryCommand = new RelayCommand(DeleteCategory, () => SelectedCategory != null && !IsEditMode);
-            CancelEditCommand = new RelayCommand(CancelEdit);
-            RefreshCommand = new RelayCommand(RefreshCategories);
-            SelectColorCommand = new RelayCommand<string>(SelectColor);
-            SelectIconCommand = new RelayCommand<string>(SelectIcon);
-
+            AddCategoryCommand = CommandFactory.Create(StartAddCategory);
+            SaveCategoryCommand = CommandFactory.Create(SaveCategory, () => !IsBusy && IsValid() && IsEditMode);
+            DeleteCategoryCommand = CommandFactory.Create(DeleteCategory, () => SelectedCategory != null && !IsEditMode);
+            CancelEditCommand = CommandFactory.Create(CancelEdit);
+            RefreshCommand = CommandFactory.Create(RefreshCategories);
+            SelectColorCommand = CommandFactory.Create<string>(SelectColor);
+            SelectIconCommand = CommandFactory.Create<string>(SelectIcon);
         }
 
         #endregion
 
         #region Command Methods
 
-        private void StartAddCategory()
-        {
-            ClearForm();
-            IsEditMode = true;
-            ValidationMessage = string.Empty;
-        }
+        private void StartAddCategory() => StartAddItem();
 
         private async void SaveCategory()
         {
             if (!IsValid()) return;
 
-            SetBusy(true, "Zapisywanie kategorii...");
-
-            try
+            await HandleOperationAsync("zapisywanie kategorii", async () =>
             {
-                var category = CreateCategoryFromInput();
+                var category = CreateItemFromInput();
 
                 if (SelectedCategory?.Id > 0)
                 {
                     // Edycja istniejącej kategorii
                     category.Id = SelectedCategory.Id;
                     var success = await _budgetManager.UpdateCategoryAsync(category);
-                    
+
                     if (success)
                     {
                         var index = Categories.IndexOf(SelectedCategory);
@@ -186,17 +161,9 @@ namespace HouseBug.ViewModels
                 }
 
                 IsEditMode = false;
-            }
-            catch (Exception ex)
-            {
-                ValidationMessage = $"Wystąpił błąd: {ex.Message}";
-            }
-            finally
-            {
-                SetBusy(false);
-            }
+            });
         }
-        
+
         private void SelectColor(string color)
         {
             if (!string.IsNullOrEmpty(color))
@@ -217,19 +184,16 @@ namespace HouseBug.ViewModels
         {
             if (SelectedCategory == null) return;
 
-            // Tutaj powinna być logika potwierdzenia usunięcia
-            var confirmResult = ShowConfirmationDialog(
+            var confirmResult = _dialogService.ShowConfirmation(
                 $"Czy na pewno chcesz usunąć kategorię '{SelectedCategory.Name}'?\n" +
                 "Jeśli kategoria ma przypisane transakcje, zostanie tylko dezaktywowana.");
 
             if (!confirmResult) return;
 
-            SetBusy(true, "Usuwanie kategorii...");
-
-            try
+            await HandleOperationAsync("usuwanie kategorii", async () =>
             {
                 var success = await _budgetManager.DeleteCategoryAsync(SelectedCategory.Id);
-                
+
                 if (success)
                 {
                     Categories.Remove(SelectedCategory);
@@ -241,38 +205,16 @@ namespace HouseBug.ViewModels
                 {
                     ValidationMessage = "Błąd podczas usuwania kategorii.";
                 }
-            }
-            finally
-            {
-                SetBusy(false);
-            }
-        }
-
-        private void CancelEdit()
-        {
-            IsEditMode = false;
-            ClearForm();
-            ValidationMessage = string.Empty;
+            });
         }
 
         private async void RefreshCategories()
         {
-            SetBusy(true, "Odświeżanie kategorii...");
-            
-            try
+            await HandleOperationAsync("odświeżanie kategorii", async () =>
             {
                 await LoadCategoriesAsync();
                 ValidationMessage = "Lista kategorii została odświeżona.";
-            }
-            finally
-            {
-                SetBusy(false);
-            }
-        }
-
-        private bool CanSaveCategory()
-        {
-            return !IsBusy && IsValid() && IsEditMode;
+            });
         }
 
         #endregion
@@ -286,83 +228,83 @@ namespace HouseBug.ViewModels
 
         private async Task LoadCategoriesAsync()
         {
-            SetBusy(true, "Ładowanie kategorii...");
-            
-            try
+            await HandleOperationAsync("ładowanie kategorii", async () =>
             {
                 var categories = await Task.Run(() => _budgetManager.GetAllCategories());
                 Categories = new ObservableCollection<Category>(categories);
-            }
-            finally
-            {
-                SetBusy(false);
-            }
+            });
         }
 
         #endregion
 
         #region Validation
 
-        public string Error => string.Empty;
-
-        public string this[string columnName]
+        protected override string[] GetValidatableProperties()
         {
-            get
-            {
-                string error = string.Empty;
-
-                switch (columnName)
-                {
-                    case nameof(Name):
-                        if (string.IsNullOrWhiteSpace(Name))
-                            error = "Nazwa jest wymagana";
-                        else if (Name.Length > 50)
-                            error = "Nazwa nie może być dłuższa niż 50 znaków";
-                        else if (Categories?.Any(c => c.Name.Equals(Name, StringComparison.OrdinalIgnoreCase) && 
-                                                     c.Id != (SelectedCategory?.Id ?? 0)) == true)
-                            error = "Kategoria o tej nazwie już istnieje";
-                        break;
-
-                    case nameof(Description):
-                        if (!string.IsNullOrEmpty(Description) && Description.Length > 200)
-                            error = "Opis nie może być dłuższy niż 200 znaków";
-                        break;
-                }
-
-                return error;
-            }
+            return new[] { nameof(Name), nameof(Description) };
         }
 
-        private bool IsValid()
+        protected override string GetValidationError(string propertyName)
         {
-            var properties = new[] { nameof(Name), nameof(Description) };
-            var hasErrors = properties.Any(property => !string.IsNullOrEmpty(this[property]));
-            
-            if (hasErrors)
+            string error = string.Empty;
+
+            switch (propertyName)
             {
+                case nameof(Name):
+                    if (string.IsNullOrWhiteSpace(Name))
+                        error = "Nazwa jest wymagana";
+                    else if (Name.Length > 50)
+                        error = "Nazwa nie może być dłuższa niż 50 znaków";
+                    else if (Categories?.Any(c => c.Name.Equals(Name, StringComparison.OrdinalIgnoreCase) && 
+                                                 c.Id != (SelectedCategory?.Id ?? 0)) == true)
+                        error = "Kategoria o tej nazwie już istnieje";
+                    break;
+
+                case nameof(Description):
+                    if (!string.IsNullOrEmpty(Description) && Description.Length > 200)
+                        error = "Opis nie może być dłuższy niż 200 znaków";
+                    break;
+            }
+
+            return error;
+        }
+
+        protected override bool IsValid()
+        {
+            var isValid = base.IsValid();
+            if (!isValid)
+            {
+                ValidationMessage = "Proszę poprawić błędy walidacji.";
                 return false;
             }
 
-            return !string.IsNullOrWhiteSpace(Name);
+            if (string.IsNullOrWhiteSpace(Name))
+            {
+                ValidationMessage = "Nazwa jest wymagana.";
+                return false;
+            }
+
+            ValidationMessage = string.Empty;
+            return true;
         }
 
         #endregion
 
-        #region Helper Methods
+        #region Override Methods
 
-        private void PopulateEditForm()
+        protected override void PopulateFormFromItem(Category item)
         {
-            if (SelectedCategory != null)
+            if (item != null)
             {
-                Name = SelectedCategory.Name;
-                Description = SelectedCategory.Description;
-                Color = SelectedCategory.Color;
-                Icon = SelectedCategory.Icon;
-                IsActive = SelectedCategory.IsActive;
+                Name = item.Name;
+                Description = item.Description;
+                Color = item.Color;
+                Icon = item.Icon;
+                IsActive = item.IsActive;
             }
         }
 
-        private void ClearForm()
+        protected override void ClearForm()
         {
             Name = string.Empty;
             Description = string.Empty;
@@ -371,7 +313,7 @@ namespace HouseBug.ViewModels
             IsActive = true;
         }
 
-        private Category CreateCategoryFromInput()
+        protected override Category CreateItemFromInput()
         {
             return new Category
             {
@@ -383,15 +325,31 @@ namespace HouseBug.ViewModels
             };
         }
 
-        private bool ShowConfirmationDialog(string message)
+        protected override async Task<bool> SaveItemAsync(Category item)
         {
-            var result = System.Windows.MessageBox.Show(
-                message, 
-                "Potwierdzenie", 
-                System.Windows.MessageBoxButton.YesNo, 
-                System.Windows.MessageBoxImage.Question);
-    
-            return result == System.Windows.MessageBoxResult.Yes;
+            if (item.Id > 0)
+            {
+                return await _budgetManager.UpdateCategoryAsync(item);
+            }
+            else
+            {
+                var savedItem = await _budgetManager.AddCategoryAsync(item);
+                return savedItem != null;
+            }
+        }
+
+        protected override async Task<bool> DeleteItemAsync(Category item)
+        {
+            return await _budgetManager.DeleteCategoryAsync(item.Id);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _budgetManager?.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         #endregion

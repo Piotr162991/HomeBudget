@@ -1,32 +1,48 @@
 ﻿using System;
 using System.Windows;
 using HouseBug.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HouseBug
 {
     public partial class App : Application
     {
-        protected override void OnStartup(StartupEventArgs e)
+        private ServiceProvider _serviceProvider;
+
+        public App()
+        {
+            var services = new ServiceCollection();
+            ConfigureServices(services);
+            _serviceProvider = services.BuildServiceProvider();
+        }
+
+        private void ConfigureServices(ServiceCollection services)
+        {
+            // Rejestracja usług
+            services.AddSingleton<IDialogService, DialogService>();
+            services.AddTransient<BudgetManager>();
+            services.AddTransient<ReportGenerator>();
+        }
+
+        protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
             try
             {
-                DatabaseInitializer.InitializeAsync();
+                await DatabaseInitializer.InitializeAsync();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Błąd podczas inicjalizacji aplikacji: {ex.Message}",
-                    "Błąd krytyczny",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                MessageBox.Show($"Błąd podczas inicjalizacji bazy danych: {ex.Message}", 
+                    "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
             }
         }
 
-        protected override void OnExit(ExitEventArgs e)
+        public static T GetService<T>()
         {
-            base.OnExit(e);
+            return ((App)Current)._serviceProvider.GetRequiredService<T>();
         }
     }
 }

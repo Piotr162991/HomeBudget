@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using HouseBug.Models;
 using HouseBug.Services;
@@ -10,11 +9,10 @@ using HouseBug.ViewModels.Base;
 
 namespace HouseBug.ViewModels
 {
-    public class TransactionViewModel : ViewModelBase, IDataErrorInfo
+    public class TransactionViewModel : CrudViewModelBase<Transaction>
     {
         private readonly BudgetManager _budgetManager;
         private readonly Transaction _originalTransaction;
-        private bool _isEditMode;
 
         public TransactionViewModel(BudgetManager budgetManager, List<Category> categories, Transaction transaction = null)
         {
@@ -24,7 +22,7 @@ namespace HouseBug.ViewModels
             _isEditMode = transaction != null;
 
             InitializeCommands();
-            InitializeFromTransaction(transaction);
+            PopulateFormFromItem(transaction);
         }
 
         #region Properties
@@ -32,8 +30,6 @@ namespace HouseBug.ViewModels
         public List<Category> Categories { get; }
 
         private decimal _amount;
-        [Required(ErrorMessage = "Kwota jest wymagana")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Kwota musi być większa od 0")]
         public decimal Amount
         {
             get => _amount;
@@ -41,8 +37,6 @@ namespace HouseBug.ViewModels
         }
 
         private string _description;
-        [Required(ErrorMessage = "Opis jest wymagany")]
-        [StringLength(200, ErrorMessage = "Opis nie może być dłuższy niż 200 znaków")]
         public string Description
         {
             get => _description;
@@ -57,7 +51,6 @@ namespace HouseBug.ViewModels
         }
 
         private Category _selectedCategory;
-        [Required(ErrorMessage = "Kategoria jest wymagana")]
         public Category SelectedCategory
         {
             get => _selectedCategory;
@@ -77,15 +70,6 @@ namespace HouseBug.ViewModels
             set => IsIncome = !value;
         }
 
-        private string _validationMessage;
-        public string ValidationMessage
-        {
-            get => _validationMessage;
-            set => SetProperty(ref _validationMessage, value);
-        }
-
-        public bool IsEditMode => _isEditMode;
-
         public string WindowTitle => IsEditMode ? "Edytuj transakcję" : "Dodaj transakcję";
 
         #endregion
@@ -99,10 +83,10 @@ namespace HouseBug.ViewModels
 
         private void InitializeCommands()
         {
-            SaveCommand = new RelayCommand(Save, CanSave);
-            CancelCommand = new RelayCommand(Cancel);
-            SetIncomeCommand = new RelayCommand(() => IsIncome = true);
-            SetExpenseCommand = new RelayCommand(() => IsIncome = false);
+            SaveCommand = CommandFactory.Create(Save, () => !IsBusy && IsValid());
+            CancelCommand = CommandFactory.Create(Cancel);
+            SetIncomeCommand = CommandFactory.Create(() => IsIncome = true);
+            SetExpenseCommand = CommandFactory.Create(() => IsIncome = false);
         }
 
         #endregion
@@ -113,11 +97,9 @@ namespace HouseBug.ViewModels
         {
             if (!IsValid()) return;
 
-            SetBusy(true, IsEditMode ? "Aktualizowanie transakcji..." : "Zapisywanie transakcji...");
-
-            try
+            await HandleOperationAsync(IsEditMode ? "aktualizacja transakcji" : "zapisywanie transakcji", async () =>
             {
-                var transaction = CreateTransactionFromInput();
+                var transaction = CreateItemFromInput();
 
                 if (IsEditMode)
                 {
@@ -140,20 +122,7 @@ namespace HouseBug.ViewModels
                     var savedTransaction = await _budgetManager.AddTransactionAsync(transaction);
                     OnTransactionSaved(savedTransaction);
                 }
-            }
-            catch (Exception ex)
-            {
-                ValidationMessage = $"Wystąpił błąd: {ex.Message}";
-            }
-            finally
-            {
-                SetBusy(false);
-            }
-        }
-
-        private bool CanSave()
-        {
-            return !IsBusy && IsValid();
+            });
         }
 
         private void Cancel()
@@ -165,64 +134,62 @@ namespace HouseBug.ViewModels
 
         #region Public Methods
 
-        // Dodaj tę metodę - to ona jest potrzebna w MainWindow!
         public Transaction GetTransaction()
         {
             if (!IsValid())
                 return null;
 
-            return CreateTransactionFromInput();
+            return CreateItemFromInput();
         }
 
         #endregion
 
         #region Validation
 
-        public string Error => string.Empty;
-
-        public string this[string columnName]
+        protected override string[] GetValidatableProperties()
         {
-            get
-            {
-                string error = string.Empty;
-
-                switch (columnName)
-                {
-                    case nameof(Amount):
-                        if (Amount <= 0)
-                            error = "Kwota musi być większa od 0";
-                        break;
-
-                    case nameof(Description):
-                        if (string.IsNullOrWhiteSpace(Description))
-                            error = "Opis jest wymagany";
-                        else if (Description.Length > 200)
-                            error = "Opis nie może być dłuższy niż 200 znaków";
-                        break;
-
-                    case nameof(SelectedCategory):
-                        if (SelectedCategory == null)
-                            error = "Kategoria jest wymagana";
-                        break;
-
-                    case nameof(Date):
-                        if (Date > DateTime.Today)
-                            error = "Data nie może być z przyszłości";
-                        else if (Date < DateTime.Today.AddYears(-10))
-                            error = "Data nie może być starsza niż 10 lat";
-                        break;
-                }
-
-                return error;
-            }
+            return new[] { nameof(Amount), nameof(Description), nameof(SelectedCategory), nameof(Date) };
         }
 
-        private bool IsValid()
+        protected override string GetValidationError(string propertyName)
         {
-            var properties = new[] { nameof(Amount), nameof(Description), nameof(SelectedCategory), nameof(Date) };
-            var hasErrors = properties.Any(property => !string.IsNullOrEmpty(this[property]));
-            
-            if (hasErrors)
+            string error = string.Empty;
+
+            switch (propertyName)
+            {
+                case nameof(Amount):
+                    if (Amount <= 0)
+                        error = "Kwota musi być większa od 0";
+                    break;
+
+                case nameof(Description):
+                    if (string.IsNullOrWhiteSpace(Description))
+                        error = "Opis jest wymagany";
+                    else if (Description.Length > 200)
+                        error = "Opis nie może być dłuższy niż 200 znaków";
+                    break;
+
+                case nameof(SelectedCategory):
+                    if (SelectedCategory == null)
+                        error = "Kategoria jest wymagana";
+                    break;
+
+                case nameof(Date):
+                    if (Date > DateTime.Today)
+                        error = "Data nie może być z przyszłości";
+                    else if (Date < DateTime.Today.AddYears(-10))
+                        error = "Data nie może być starsza niż 10 lat";
+                    break;
+            }
+
+            return error;
+        }
+
+        protected override bool IsValid()
+        {
+            var isValid = base.IsValid();
+
+            if (!isValid)
             {
                 ValidationMessage = "Proszę poprawić błędy walidacji.";
                 return false;
@@ -234,9 +201,9 @@ namespace HouseBug.ViewModels
 
         #endregion
 
-        #region Helper Methods
+        #region Override Methods
 
-        private void InitializeFromTransaction(Transaction transaction)
+        protected override void PopulateFormFromItem(Transaction transaction)
         {
             if (transaction != null)
             {
@@ -257,7 +224,16 @@ namespace HouseBug.ViewModels
             }
         }
 
-        private Transaction CreateTransactionFromInput()
+        protected override void ClearForm()
+        {
+            Amount = 0;
+            Description = string.Empty;
+            Date = DateTime.Today;
+            IsIncome = false;
+            SelectedCategory = null;
+        }
+
+        protected override Transaction CreateItemFromInput()
         {
             return new Transaction
             {
@@ -270,6 +246,33 @@ namespace HouseBug.ViewModels
                 CreatedAt = IsEditMode ? _originalTransaction.CreatedAt : DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
+        }
+
+        protected override async Task<bool> SaveItemAsync(Transaction item)
+        {
+            if (item.Id > 0)
+            {
+                return await _budgetManager.UpdateTransactionAsync(item);
+            }
+            else
+            {
+                var savedItem = await _budgetManager.AddTransactionAsync(item);
+                return savedItem != null;
+            }
+        }
+
+        protected override async Task<bool> DeleteItemAsync(Transaction item)
+        {
+            return await _budgetManager.DeleteTransactionAsync(item.Id);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _budgetManager?.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         #endregion

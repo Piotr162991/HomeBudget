@@ -11,6 +11,7 @@ using System.Windows.Input;
 using HouseBug.Models;
 using HouseBug.Services;
 using HouseBug.ViewModels.Base;
+using HouseBug.Views.Dialogs;
 
 namespace HouseBug.ViewModels
 {
@@ -281,21 +282,17 @@ namespace HouseBug.ViewModels
 
         private void GenerateReport()
         {
-            var report = GenerateSimpleReport();
-
-            // Pokaż raport w prostym MessageBox lub stwórz prostą implementację
-            var confirmed =
-                ShowConfirmationDialogRequested?.Invoke(
-                    $"Raport miesięczny:\n\n{report}\n\nCzy chcesz zapisać raport do pliku?") ?? false;
-
-            if (confirmed)
+            // Tworzymy i pokazujemy okno dialogowe do wyboru typu raportu
+            var reportDialog = new Views.Dialogs.ReportDialog(_reportGenerator, _budgetManager)
             {
-                var filePath = GetSaveFilePathRequested?.Invoke("txt");
-                if (!string.IsNullOrEmpty(filePath))
-                {
-                    System.IO.File.WriteAllText(filePath, report);
-                    StatusMessage = $"Raport zapisany do: {filePath}";
-                }
+                Owner = Application.Current.MainWindow
+            };
+
+            var result = reportDialog.ShowDialog();
+
+            if (result == true)
+            {
+                StatusMessage = "Raport został wygenerowany i zapisany do pliku.";
             }
         }
 
@@ -432,39 +429,23 @@ namespace HouseBug.ViewModels
             _budgetManager?.Dispose();
         }
         
+        // Funkcjonalność generowania raportu rocznego została zintegrowana w oknie dialogowym ReportDialog
         private void GenerateYearlyReport()
         {
-            int year = DateTime.Now.Year;
-
-            var result = MessageBox.Show(
-                $"Wygenerować raport roczny za rok {year}?",
-                "Generuj raport roczny",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result != MessageBoxResult.Yes)
+            // Tworzymy i pokazujemy okno dialogowe do wyboru typu raportu
+            var reportDialog = new Views.Dialogs.ReportDialog(_reportGenerator, _budgetManager)
             {
-                StatusMessage = "Anulowano generowanie raportu rocznego.";
-                return;
-            }
-
-            string report = _reportGenerator.GenerateYearlyReport(year);
-
-            var sfd = new Microsoft.Win32.SaveFileDialog
-            {
-                Title = "Zapisz raport roczny",
-                FileName = $"RaportRoczny_{year}.txt",
-                Filter = "Plik tekstowy (*.txt)|*.txt|Wszystkie pliki (*.*)|*.*"
+                Owner = Application.Current.MainWindow
             };
 
-            if (sfd.ShowDialog() == true)
+            // Dodaj metodę do klasy ReportDialog zamiast bezpośredniego dostępu do kontrolki
+            reportDialog.SetYearlyReportAsDefault();
+
+            var result = reportDialog.ShowDialog();
+
+            if (result == true)
             {
-                File.WriteAllText(sfd.FileName, report, Encoding.UTF8);
-                StatusMessage = $"Raport roczny za {year} został zapisany.";
-            }
-            else
-            {
-                StatusMessage = "Anulowano zapis raportu rocznego.";
+                StatusMessage = "Raport roczny został wygenerowany i zapisany do pliku.";
             }
         }
 
