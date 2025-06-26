@@ -222,7 +222,7 @@ namespace HouseBug.ViewModels
             if (newTransaction != null)
             {
                 Transactions?.Add(newTransaction);
-                LoadMonthlySummary();
+                RefreshData();
                 StatusMessage = "Dodano nową transakcję";
             }
         }
