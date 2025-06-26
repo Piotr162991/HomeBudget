@@ -27,6 +27,8 @@ namespace HouseBug.Services
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
+
             modelBuilder.Entity<Transaction>()
                 .HasOne(t => t.Category)
                 .WithMany(c => c.Transactions)
@@ -52,20 +54,13 @@ namespace HouseBug.Services
                 .HasDatabaseName("IX_MonthlyBudget_Period_Category")
                 .IsUnique();
 
-            SeedData(modelBuilder);
-        }
-
-        private void SeedData(ModelBuilder modelBuilder)
-        {
             modelBuilder.Entity<Category>().HasData(
-                new Category { Id = 1, Name = "Jedzenie", Description = "Zakupy spożywcze i restauracje", Color = "#E74C3C", Icon = "🍕" },
-                new Category { Id = 2, Name = "Transport", Description = "Paliwo, bilety komunikacji publicznej", Color = "#3498DB", Icon = "🚗" },
-                new Category { Id = 3, Name = "Rozrywka", Description = "Kino, gry, hobby", Color = "#9B59B6", Icon = "🎮" },
-                new Category { Id = 4, Name = "Rachunki", Description = "Czynsz, prąd, gaz, internet", Color = "#F39C12", Icon = "💡" },
-                new Category { Id = 5, Name = "Wynagrodzenie", Description = "Pensja i dodatkowe dochody", Color = "#27AE60", Icon = "💰" },
-                new Category { Id = 6, Name = "Zdrowie", Description = "Lekarze, apteka, suplementy", Color = "#E67E22", Icon = "⚕️" },
-                new Category { Id = 7, Name = "Zakupy", Description = "Ubrania, elektronika, inne", Color = "#1ABC9C", Icon = "🛍️" },
-                new Category { Id = 8, Name = "Edukacja", Description = "Kursy, książki, szkolenia", Color = "#34495E", Icon = "📚" }
+                new Category { Id = 1, Name = "Jedzenie", Description = "Zakupy spożywcze i restauracje", Color = "#E74C3C" },
+                new Category { Id = 2, Name = "Transport", Description = "Paliwo, bilety komunikacji publicznej", Color = "#3498DB" },
+                new Category { Id = 3, Name = "Rozrywka", Description = "Kino, gry, hobby", Color = "#9B59B6" },
+                new Category { Id = 4, Name = "Rachunki", Description = "Czynsz, prąd, gaz, internet", Color = "#F39C12" },
+                new Category { Id = 5, Name = "Wynagrodzenie", Description = "Pensja i dodatkowe dochody", Color = "#27AE60" },
+                new Category { Id = 6, Name = "Zdrowie", Description = "Lekarze, apteka, suplementy", Color = "#E67E22" }
             );
 
             modelBuilder.Entity<AppSettings>().HasData(

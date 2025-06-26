@@ -18,9 +18,6 @@ namespace HouseBug.Models
         [MaxLength(20)]
         public string Color { get; set; } = "#3498db";
         
-        [MaxLength(50)]
-        public string Icon { get; set; }
-        
         public bool IsActive { get; set; } = true;
         
         public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();

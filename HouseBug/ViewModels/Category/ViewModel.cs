@@ -69,13 +69,6 @@ namespace HouseBug.ViewModels
             set => SetProperty(ref _color, value);
         }
 
-        private string _icon;
-        public string Icon
-        {
-            get => _icon;
-            set => SetProperty(ref _icon, value);
-        }
-
         private bool _isActive = true;
         public bool IsActive
         {
@@ -89,11 +82,6 @@ namespace HouseBug.ViewModels
             "#1ABC9C", "#E67E22", "#34495E", "#F1C40F", "#E91E63"
         };
 
-        public string[] PredefinedIcons { get; } = 
-        {
-            "🍕", "🚗", "🎮", "💡", "💰", "⚕️", "🛍️", "📚", "🏠", "✈️"
-        };
-
         #endregion
 
         #region Commands
@@ -104,7 +92,6 @@ namespace HouseBug.ViewModels
         public ICommand CancelEditCommand { get; private set; }
         public ICommand RefreshCommand { get; private set; }
         public ICommand SelectColorCommand { get; private set; }
-        public ICommand SelectIconCommand { get; private set; }
 
         private void InitializeCommands()
         {
@@ -114,7 +101,6 @@ namespace HouseBug.ViewModels
             CancelEditCommand = CommandFactory.Create(CancelEdit);
             RefreshCommand = CommandFactory.Create(RefreshCategories);
             SelectColorCommand = CommandFactory.Create<string>(SelectColor);
-            SelectIconCommand = CommandFactory.Create<string>(SelectIcon);
         }
 
         #endregion
@@ -165,14 +151,6 @@ namespace HouseBug.ViewModels
             if (!string.IsNullOrEmpty(color))
             {
                 Color = color;
-            }
-        }
-
-        private void SelectIcon(string icon)
-        {
-            if (!string.IsNullOrEmpty(icon))
-            {
-                Icon = icon;
             }
         }
 
@@ -295,7 +273,6 @@ namespace HouseBug.ViewModels
                 Name = item.Name;
                 Description = item.Description;
                 Color = item.Color;
-                Icon = item.Icon;
                 IsActive = item.IsActive;
             }
         }
@@ -305,7 +282,6 @@ namespace HouseBug.ViewModels
             Name = string.Empty;
             Description = string.Empty;
             Color = "#3498DB";
-            Icon = string.Empty;
             IsActive = true;
         }
 
@@ -316,7 +292,6 @@ namespace HouseBug.ViewModels
                 Name = Name?.Trim(),
                 Description = Description?.Trim(),
                 Color = Color,
-                Icon = Icon,
                 IsActive = IsActive
             };
         }
