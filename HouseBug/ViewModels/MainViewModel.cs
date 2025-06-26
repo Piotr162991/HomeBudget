@@ -379,6 +379,7 @@ namespace HouseBug.ViewModels
                 UpdateCurrencySymbol();
 
                 Categories.Clear();
+                Categories.Add(CreateAllCategoriesFilter());
                 var categories = await _budgetManager.GetCategoriesAsync();
                 foreach (var category in categories)
                 {
@@ -400,6 +401,14 @@ namespace HouseBug.ViewModels
                 SetBusy(false);
             }
         }
+
+        private Category CreateAllCategoriesFilter() => new Category
+        {
+            Id = -1,
+            Name = "Wszystko",
+            Description = "Pokaż transakcje ze wszystkich kategorii",
+            Color = "#808080"
+        };
 
         private async Task LoadTransactionsForMonthAsync()
         {
@@ -484,10 +493,9 @@ namespace HouseBug.ViewModels
 
         private void FilterTransactions()
         {
-            // Zacznij od wszystkich transakcji
             var query = _allTransactions.AsEnumerable();
 
-            if (SelectedCategoryFilter != null)
+            if (SelectedCategoryFilter != null && SelectedCategoryFilter.Id != -1)
             {
                 query = query.Where(t => t.CategoryId == SelectedCategoryFilter.Id);
             }

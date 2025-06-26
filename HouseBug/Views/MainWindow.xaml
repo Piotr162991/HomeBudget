@@ -35,12 +35,6 @@
         <!-- Menu główne -->
         <Menu Grid.Row="0" Background="{StaticResource PrimaryBrush}">
             <MenuItem Header="Plik" Foreground="White">
-                <MenuItem Header="Nowa transakcja"  Command="{Binding AddTransactionCommand}"/>
-                <Separator/>
-                <MenuItem Header="Eksportuj do CSV" Command="{Binding ExportToCsvCommand}"/>
-                <MenuItem Header="Generuj raport" Command="{Binding GenerateReportCommand}"/>
-                <MenuItem Header="Generuj raport roczny" Command="{Binding GenerateYearlyReportCommand}"/>
-                <Separator/>
                 <MenuItem Header="Zakończ" Click="ExitMenuItem_Click"/>
             </MenuItem>
             <MenuItem Header="Edycja" Foreground="White">
