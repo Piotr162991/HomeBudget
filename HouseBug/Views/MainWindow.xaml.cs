@@ -30,7 +30,7 @@ namespace HouseBug.Views
 
             var result = dialog.ShowDialog();
             
-            return result == true ? transactionViewModel.GetTransaction() : new Transaction();
+            return result == true ? transactionViewModel.GetTransaction() : null;
         }
 
         private bool OnShowConfirmationDialogRequested(string message)
