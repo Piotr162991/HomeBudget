@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.IO;
+using System.Linq;
 using Microsoft.Win32;
 using HouseBug.Services;
 
@@ -90,39 +91,60 @@ namespace HouseBug.Views.Dialogs
 
         private void GenerateButton_Click(object sender, RoutedEventArgs e)
         {
-            string report = GenerateSelectedReport();
-            if (string.IsNullOrEmpty(report))
-            {
-                MessageBox.Show("Nie udało się wygenerować raportu.", "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
-            var sfd = new SaveFileDialog
-            {
-                Title = "Zapisz raport",
-                Filter = "Plik tekstowy (*.txt)|*.txt|Wszystkie pliki (*.*)|*.*"
-            };
-
             ComboBoxItem selectedItem = (ComboBoxItem)ReportTypeComboBox.SelectedItem;
             string reportType = selectedItem.Tag.ToString();
 
             if (reportType == "Monthly")
             {
                 DateTime selectedMonth = MonthPicker.SelectedDate ?? DateTime.Now;
-                sfd.FileName = $"Raport_Miesięczny_{selectedMonth:yyyy_MM}.txt";
+                var transactions = _budgetManager.GetTransactionsByMonth(selectedMonth);
+                SaveFileDialog sfd = new SaveFileDialog
+                {
+                    Title = "Zapisz raport",
+                    Filter = "Plik tekstowy (*.txt)|*.txt|Plik CSV (*.csv)|*.csv|Wszystkie pliki (*.*)|*.*",
+                    FileName = $"Raport_Miesięczny_{selectedMonth:yyyy_MM}"
+                };
+                if (sfd.ShowDialog() == true)
+                {
+                    if (sfd.FilterIndex == 2 || sfd.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _reportGenerator.ExportToCsvAsync(transactions, sfd.FileName).Wait();
+                    }
+                    else
+                    {
+                        string report = _reportGenerator.GenerateMonthlyReport(selectedMonth);
+                        File.WriteAllText(sfd.FileName, report);
+                    }
+                    MessageBox.Show($"Raport został zapisany w pliku:\n{sfd.FileName}", "Sukces", MessageBoxButton.OK, MessageBoxImage.Information);
+                    DialogResult = true;
+                    Close();
+                }
             }
             else if (reportType == "Yearly")
             {
                 int selectedYear = (int)YearComboBox.SelectedItem;
-                sfd.FileName = $"Raport_Roczny_{selectedYear}.txt";
-            }
-
-            if (sfd.ShowDialog() == true)
-            {
-                File.WriteAllText(sfd.FileName, report);
-                MessageBox.Show($"Raport został zapisany w pliku:\n{sfd.FileName}", "Sukces", MessageBoxButton.OK, MessageBoxImage.Information);
-                DialogResult = true;
-                Close();
+                var yearlySummary = _budgetManager.GetYearlySummary(selectedYear).SelectMany(s => _budgetManager.GetTransactionsByMonth(s.Period)).ToList();
+                SaveFileDialog sfd = new SaveFileDialog
+                {
+                    Title = "Zapisz raport",
+                    Filter = "Plik tekstowy (*.txt)|*.txt|Plik CSV (*.csv)|*.csv|Wszystkie pliki (*.*)|*.*",
+                    FileName = $"Raport_Roczny_{selectedYear}"
+                };
+                if (sfd.ShowDialog() == true)
+                {
+                    if (sfd.FilterIndex == 2 || sfd.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _reportGenerator.ExportToCsvAsync(yearlySummary, sfd.FileName).Wait();
+                    }
+                    else
+                    {
+                        string report = _reportGenerator.GenerateYearlyReport(selectedYear);
+                        File.WriteAllText(sfd.FileName, report);
+                    }
+                    MessageBox.Show($"Raport został zapisany w pliku:\n{sfd.FileName}", "Sukces", MessageBoxButton.OK, MessageBoxImage.Information);
+                    DialogResult = true;
+                    Close();
+                }
             }
         }
 
