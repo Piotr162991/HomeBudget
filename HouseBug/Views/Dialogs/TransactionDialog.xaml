@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:HouseBug.ViewModels"
         Title="{Binding WindowTitle}" 
-        Height="450" Width="500"
+        Height="550" Width="500"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
@@ -61,15 +61,16 @@
                            ToolTip="Wybierz datę transakcji"/>
                 <TextBlock Text="Kategoria:" Style="{StaticResource LabelStyle}"/>
                 <ComboBox ItemsSource="{Binding Categories}"
-                          SelectedItem="{Binding SelectedCategory}">
+                          SelectedItem="{Binding SelectedCategory}"
+                          Width="440" Height="35">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <Border Width="12" Height="12" 
+                            <StackPanel Orientation="Horizontal" Margin="5">
+                                <Border Width="16" Height="16" 
                                         Background="{Binding Color}" 
-                                        CornerRadius="6" 
+                                        CornerRadius="10" 
                                         Margin="0,0,8,0"/>
-                                <TextBlock Text="{Binding Name}"/>
+                                <TextBlock Text="{Binding Name}" FontSize="14"/>
                             </StackPanel>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
@@ -111,24 +112,24 @@
                    IsCancel="True"/>
         </Grid>
 
-        <!-- Loading overlay -->
-        <Grid Grid.RowSpan="3" 
-              Background="#80000000" 
-              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Background="White" 
-                   CornerRadius="8" 
-                   Padding="20" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center">
-                <StackPanel>
-                    <ProgressBar IsIndeterminate="True" 
-                                Height="15" 
-                                Width="150" 
-                                Margin="0,0,0,10"/>
-                    <TextBlock Text="{Binding BusyMessage}" 
-                              HorizontalAlignment="Center"/>
-                </StackPanel>
-            </Border>
-        </Grid>
+        <!-- ~1~ Loading overlay @1@ -->
+        <!-- <Grid Grid.RowSpan="3"  -->
+        <!--       Background="#80000000"  -->
+        <!--       Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"> -->
+        <!--     <Border Background="White"  -->
+        <!--            CornerRadius="8"  -->
+        <!--            Padding="20"  -->
+        <!--            HorizontalAlignment="Center"  -->
+        <!--            VerticalAlignment="Center"> -->
+        <!--         <StackPanel> -->
+        <!--             <ProgressBar IsIndeterminate="True"  -->
+        <!--                         Height="15"  -->
+        <!--                         Width="150"  -->
+        <!--                         Margin="0,0,0,10"/> -->
+        <!--             <TextBlock Text="{Binding BusyMessage}"  -->
+        <!--                       HorizontalAlignment="Center"/> -->
+        <!--         </StackPanel> -->
+        <!--     </Border> -->
+        <!-- </Grid> -->
     </Grid>
 </Window>

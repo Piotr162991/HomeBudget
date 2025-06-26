@@ -43,8 +43,6 @@
                     <ComboBoxItem.Tag>GBP</ComboBoxItem.Tag>
                 </ComboBoxItem>
             </ComboBox>
-            <TextBlock Text="Domyślny miesiąc startowy:" Margin="0,0,0,5"/>
-            <TextBox Text="{Binding DefaultStartMonth, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
         </StackPanel>
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
             <Button Content="Zapisz" Width="80" Margin="0,0,10,0" IsDefault="True" Click="Save_Click"/>
