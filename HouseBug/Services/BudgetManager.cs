@@ -72,50 +72,18 @@ namespace HouseBug.Services
         {
             var startDate = new DateTime(date.Year, date.Month, 1);
             var endDate = startDate.AddMonths(1).AddDays(-1);
-            
             return GetTransactionsByDateRange(startDate, endDate);
         }
-
-        public List<Transaction> GetTransactionsByCategory(int categoryId, DateTime? startDate = null, DateTime? endDate = null)
-        {
-            var query = _context.Transactions
-                .Include(t => t.Category)
-                .Where(t => t.CategoryId == categoryId);
-
-            if (startDate.HasValue)
-                query = query.Where(t => t.Date >= startDate.Value);
-
-            if (endDate.HasValue)
-                query = query.Where(t => t.Date <= endDate.Value);
-
-            return query.OrderByDescending(t => t.Date).ToList();
-        }
-
-        public async Task<List<Transaction>> GetRecentTransactionsAsync(int count = 10)
-        {
-            return await _context.Transactions
-                .Include(t => t.Category)
-                .OrderByDescending(t => t.Date)
-                .Take(count)
-                .ToListAsync();
-        }
-
         #endregion
 
         #region Category Management
 
-        public async Task<Category> AddCategoryAsync(Category category)
+        public async Task<List<Category>> GetCategoriesAsync()
         {
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
-            return category;
-        }
-
-        public Category AddCategory(Category category)
-        {
-            _context.Categories.Add(category);
-            _context.SaveChanges();
-            return category;
+            return await _context.Categories
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
         }
 
         public List<Category> GetAllCategories()
@@ -124,6 +92,13 @@ namespace HouseBug.Services
                 .Where(c => c.IsActive)
                 .OrderBy(c => c.Name)
                 .ToList();
+        }
+
+        public async Task<Category> AddCategoryAsync(Category category)
+        {
+            _context.Categories.Add(category);
+            await _context.SaveChangesAsync();
+            return category;
         }
 
         public async Task<bool> UpdateCategoryAsync(Category category)
@@ -153,13 +128,12 @@ namespace HouseBug.Services
                     if (hasTransactions)
                     {
                         category.IsActive = false;
-                        await _context.SaveChangesAsync();
                     }
                     else
                     {
                         _context.Categories.Remove(category);
-                        await _context.SaveChangesAsync();
                     }
+                    await _context.SaveChangesAsync();
                     return true;
                 }
                 return false;
@@ -170,192 +144,63 @@ namespace HouseBug.Services
             }
         }
 
-        #endregion
-
-        #region Budget Analysis
-
-        public decimal GetMonthlyBalance(DateTime date)
-        {
-            var transactions = GetTransactionsByMonth(date);
-            var income = transactions.Where(t => t.IsIncome).Sum(t => t.Amount);
-            var expenses = transactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
-            return income - expenses;
-        }
-
-        public BudgetSummary GetMonthlySummary(DateTime date)
-        {
-            var transactions = GetTransactionsByMonth(date);
-            var income = transactions.Where(t => t.IsIncome).Sum(t => t.Amount);
-            var expenses = transactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
-
-            var categoryGroups = transactions
-                .Where(t => !t.IsIncome)
-                .GroupBy(t => t.Category)
-                .Select(g => new CategorySummary
-                {
-                    CategoryName = g.Key.Name,
-                    Amount = g.Sum(t => t.Amount),
-                    TransactionCount = g.Count(),
-                    Percentage = expenses > 0 ? (double)(g.Sum(t => t.Amount) / expenses) * 100 : 0,
-                    Color = g.Key.Color
-                })
-                .OrderByDescending(cs => cs.Amount)
-                .ToList();
-
-            return new BudgetSummary
-            {
-                Period = date,
-                TotalIncome = income,
-                TotalExpenses = expenses,
-                CategorySummaries = categoryGroups,
-                TransactionCount = transactions.Count
-            };
-        }
-
-        public List<BudgetSummary> GetYearlySummary(int year)
-        {
-            var summaries = new List<BudgetSummary>();
-
-            for (int month = 1; month <= 12; month++)
-            {
-                var date = new DateTime(year, month, 1);
-                summaries.Add(GetMonthlySummary(date));
-            }
-
-            return summaries;
-        }
-
-        public Dictionary<string, decimal> GetCategoryTotals(DateTime startDate, DateTime endDate)
-        {
-            return _context.Transactions
-                .Include(t => t.Category)
-                .Where(t => t.Date >= startDate && t.Date <= endDate && !t.IsIncome)
-                .GroupBy(t => t.Category.Name)
-                .ToDictionary(g => g.Key, g => g.Sum(t => t.Amount));
-        }
 
         #endregion
 
         #region Monthly Budget Management
 
-        public async Task<MonthlyBudget> SetMonthlyBudgetAsync(int categoryId, int month, int year, decimal amount)
-        {
-            var existingBudget = await _context.MonthlyBudgets
-                .FirstOrDefaultAsync(mb => mb.CategoryId == categoryId && mb.Month == month && mb.Year == year);
-
-            if (existingBudget != null)
-            {
-                existingBudget.PlannedAmount = amount;
-                await _context.SaveChangesAsync();
-                return existingBudget;
-            }
-            else
-            {
-                var newBudget = new MonthlyBudget
-                {
-                    CategoryId = categoryId,
-                    Month = month,
-                    Year = year,
-                    PlannedAmount = amount
-                };
-
-                _context.MonthlyBudgets.Add(newBudget);
-                await _context.SaveChangesAsync();
-                return newBudget;
-            }
-        }
-
         public List<MonthlyBudget> GetMonthlyBudgets(int month, int year)
         {
+            var startDate = new DateTime(year, month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+
             var budgets = _context.MonthlyBudgets
                 .Include(mb => mb.Category)
                 .Where(mb => mb.Month == month && mb.Year == year)
                 .ToList();
 
-            var startDate = new DateTime(year, month, 1);
-            var endDate = startDate.AddMonths(1).AddDays(-1);
+            var transactions = GetTransactionsByDateRange(startDate, endDate);
+            var spentByCategory = transactions
+                .Where(t => !t.IsIncome)
+                .GroupBy(t => t.CategoryId)
+                .ToDictionary(g => g.Key, g => g.Sum(t => t.Amount));
 
-            foreach (var budget in budgets)
+            var categories = GetAllCategories();
+            
+            var result = new List<MonthlyBudget>();
+            foreach (var category in categories)
             {
-                budget.SpentAmount = _context.Transactions
-                    .Where(t => t.CategoryId == budget.CategoryId && 
-                               t.Date >= startDate && 
-                               t.Date <= endDate && 
-                               !t.IsIncome)
-                    .Sum(t => t.Amount);
-            }
-
-            return budgets;
-        }
-
-        // --- ASYNC API dla planowania budżetu ---
-        public async Task<List<Category>> GetCategoriesAsync()
-        {
-            return await _context.Categories
-                .Where(c => c.IsActive)
-                .OrderBy(c => c.Name)
-                .ToListAsync();
-        }
-
-        public async Task<List<MonthlyBudget>> GetMonthlyBudgetsAsync(int month, int year)
-        {
-            var budgets = await _context.MonthlyBudgets
-                .Include(mb => mb.Category)
-                .Where(mb => mb.Month == month && mb.Year == year)
-                .ToListAsync();
-
-            var startDate = new DateTime(year, month, 1);
-            var endDate = startDate.AddMonths(1).AddDays(-1);
-
-            foreach (var budget in budgets)
-            {
-                budget.SpentAmount = _context.Transactions
-                    .Where(t => t.CategoryId == budget.CategoryId &&
-                               t.Date >= startDate &&
-                               t.Date <= endDate &&
-                               !t.IsIncome)
-                    .Sum(t => t.Amount);
-            }
-
-            // Dodaj brakujące budżety dla aktywnych kategorii
-            var allCategories = await GetCategoriesAsync();
-            foreach (var cat in allCategories)
-            {
-                if (!budgets.Any(b => b.CategoryId == cat.Id))
-                {
-                    budgets.Add(new MonthlyBudget
+                var budget = budgets.FirstOrDefault(b => b.CategoryId == category.Id) ?? 
+                    new MonthlyBudget
                     {
-                        CategoryId = cat.Id,
-                        Category = cat,
+                        CategoryId = category.Id,
+                        Category = category,
                         Month = month,
                         Year = year,
-                        PlannedAmount = 0,
-                        SpentAmount = 0
-                    });
-                }
+                        PlannedAmount = 0
+                    };
+                    
+                budget.SpentAmount = spentByCategory.GetValueOrDefault(category.Id);
+                result.Add(budget);
             }
 
-
-            return budgets.OrderBy(b => b.Category.Name).ToList();
+            return result.OrderBy(b => b.Category.Name).ToList();
         }
 
         public async Task SaveMonthlyBudgetAsync(MonthlyBudget budget)
         {
             var existing = await _context.MonthlyBudgets
-                .FirstOrDefaultAsync(mb => mb.CategoryId == budget.CategoryId && mb.Month == budget.Month && mb.Year == budget.Year);
+                .FirstOrDefaultAsync(mb => mb.CategoryId == budget.CategoryId && 
+                                     mb.Month == budget.Month && 
+                                     mb.Year == budget.Year);
+                                     
             if (existing != null)
             {
                 existing.PlannedAmount = budget.PlannedAmount;
             }
             else
             {
-                _context.MonthlyBudgets.Add(new MonthlyBudget
-                {
-                    CategoryId = budget.CategoryId,
-                    Month = budget.Month,
-                    Year = budget.Year,
-                    PlannedAmount = budget.PlannedAmount
-                });
+                _context.MonthlyBudgets.Add(budget);
             }
             await _context.SaveChangesAsync();
         }
@@ -373,7 +218,7 @@ namespace HouseBug.Services
         {
             try
             {
-                var existingSettings = _context.AppSettings.FirstOrDefault();
+                var existingSettings = await _context.AppSettings.FirstOrDefaultAsync();
                 if (existingSettings != null)
                 {
                     _context.Entry(existingSettings).CurrentValues.SetValues(settings);
@@ -390,6 +235,49 @@ namespace HouseBug.Services
             {
                 return false;
             }
+        }
+
+        #endregion
+
+        #region Budget Analysis
+
+        public List<BudgetSummary> GetYearlySummary(int year)
+        {
+            var summaries = new List<BudgetSummary>();
+            
+            for (int month = 1; month <= 12; month++)
+            {
+                var date = new DateTime(year, month, 1);
+                var transactions = GetTransactionsByMonth(date);
+                
+                var income = transactions.Where(t => t.IsIncome).Sum(t => t.Amount);
+                var expenses = transactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
+
+                var categoryGroups = transactions
+                    .Where(t => !t.IsIncome)
+                    .GroupBy(t => t.Category)
+                    .Select(g => new CategorySummary
+                    {
+                        CategoryName = g.Key.Name,
+                        Amount = g.Sum(t => t.Amount),
+                        TransactionCount = g.Count(),
+                        Percentage = expenses > 0 ? (double)(g.Sum(t => t.Amount) / expenses) * 100 : 0,
+                        Color = g.Key.Color
+                    })
+                    .OrderByDescending(cs => cs.Amount)
+                    .ToList();
+
+                summaries.Add(new BudgetSummary
+                {
+                    Period = date,
+                    TotalIncome = income,
+                    TotalExpenses = expenses,
+                    CategorySummaries = categoryGroups,
+                    TransactionCount = transactions.Count
+                });
+            }
+
+            return summaries;
         }
 
         #endregion

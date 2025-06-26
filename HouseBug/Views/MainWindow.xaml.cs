@@ -72,25 +72,21 @@ namespace HouseBug.Views
                           "O programie", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void MonthlyBudgetDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        private async void MonthlyBudgetDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
             if (e.Row.Item is MonthlyBudget budget)
             {
-                ViewModel.SaveMonthlyBudget(budget);
+                await ViewModel.SaveMonthlyBudgetAsync(budget);
             }
         }
 
         private async void AppSettingsMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            var settings = ViewModel._budgetManager.GetAppSettings();
+            var settings = ViewModel.GetAppSettings();
             var dialog = new AppSettingsDialog(settings) { Owner = this };
             if (dialog.ShowDialog() == true && dialog.IsSaved)
             {
-                await ViewModel._budgetManager.UpdateAppSettingsAsync(settings);
-                ViewModel.RefreshCurrencyFromSettings();
-                ViewModel.RefreshCommand.Execute(null);
-                ViewModel.LoadMonthlySummary();
-                ViewModel.RefreshStatisticsPanel();
+                await ViewModel.HandleAppSettingsUpdateAsync(settings);
             }
         }
 
@@ -98,9 +94,7 @@ namespace HouseBug.Views
         {
             if (e.Row.Item is Transaction transaction)
             {
-                await ViewModel._budgetManager.UpdateTransactionAsync(transaction);
-                ViewModel.LoadMonthlySummary();
-                ViewModel.StatusMessage = "Transakcja została zaktualizowana";
+                await ViewModel.HandleTransactionUpdateAsync(transaction);
             }
         }
 

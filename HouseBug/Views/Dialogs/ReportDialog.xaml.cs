@@ -148,24 +148,5 @@ namespace HouseBug.Views.Dialogs
             }
         }
 
-        private string GenerateSelectedReport()
-        {
-            ComboBoxItem selectedItem = (ComboBoxItem)ReportTypeComboBox.SelectedItem;
-            string reportType = selectedItem.Tag.ToString();
-
-            if (reportType == "Monthly")
-            {
-                DateTime selectedMonth = MonthPicker.SelectedDate ?? DateTime.Now;
-                return _reportGenerator.GenerateMonthlyReport(selectedMonth);
-            }
-            else if (reportType == "Yearly")
-            {
-                int selectedYear = (int)YearComboBox.SelectedItem;
-                return _reportGenerator.GenerateYearlyReport(selectedYear);
-            }
-
-            return null;
-        }
-
     }
 }

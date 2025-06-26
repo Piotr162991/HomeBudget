@@ -76,12 +76,14 @@
                            Command="{Binding AddCategoryCommand}"
                            Style="{StaticResource SuccessButtonStyle}"
                            Width="120"
+                           FontSize="12"
                            Margin="0,0,10,0"/>
                     
                     <Button Content="Usuń kategorię" 
                            Command="{Binding DeleteCategoryCommand}"
                            Style="{StaticResource DangerButtonStyle}"
-                           Width="120"/>
+                           Width="120"
+                           FontSize="12"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -151,11 +153,13 @@
                                     Command="{Binding SaveCommand}"
                                     Style="{StaticResource SuccessButtonStyle}"
                                     Width="120"
+                                    FontSize="12"
                                     Margin="0,0,10,0"/>
                             <Button Content="Anuluj"
                                     Command="{Binding CancelCommand}"
                                     Style="{StaticResource DangerButtonStyle}"
-                                    Width="120"/>
+                                    Width="120"
+                                    FontSize="12"/>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>

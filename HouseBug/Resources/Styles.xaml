@@ -21,16 +21,6 @@
     <FontFamily x:Key="PrimaryFont">Segoe UI</FontFamily>
     <FontFamily x:Key="HeaderFont">Segoe UI Semibold</FontFamily>
     
-    <!-- Style dla RadioButton -->
-    <Style x:Key="ModernRadioButtonStyle" TargetType="RadioButton">
-        <Setter Property="FontFamily" Value="{StaticResource PrimaryFont}"/>
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Margin" Value="5"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-    </Style>
-
-
     <!-- Style dla przycisków -->
     <Style x:Key="PrimaryButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
@@ -89,7 +79,7 @@
 
     <!-- Style dla TextBox -->
     <Style x:Key="ModernTextBoxStyle" TargetType="TextBox">
-        <Setter Property="Padding" Value="8"/>
+        <Setter Property="Padding" Value="2"/>
         <Setter Property="Margin" Value="5"/>
         <Setter Property="FontFamily" Value="{StaticResource PrimaryFont}"/>
         <Setter Property="FontSize" Value="14"/>

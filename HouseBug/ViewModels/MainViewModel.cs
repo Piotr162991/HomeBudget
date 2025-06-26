@@ -17,27 +17,30 @@ namespace HouseBug.ViewModels
 {
     public class MainViewModel : ViewModelBase, IDisposable
     {
-        public readonly BudgetManager _budgetManager;
+        private readonly BudgetManager _budgetManager;
         private readonly ReportGenerator _reportGenerator;
 
         public MainViewModel()
         {
             _budgetManager = new BudgetManager();
-            _reportGenerator = new ReportGenerator(new BudgetManager());
+            _reportGenerator = new ReportGenerator(_budgetManager);
 
             Transactions = new ObservableCollection<Transaction>();
             Categories = new ObservableCollection<Category>();
             MonthlyBudgets = new ObservableCollection<MonthlyBudget>();
+            FilteredTransactions = new List<Transaction>();
+            _searchText = string.Empty;
+            _statusMessage = string.Empty;
 
             InitializeCommands();
-            LoadData();
+            _ = LoadDataAsync();
         }
 
-        public event Func<TransactionViewModel, Transaction?> ShowTransactionDialogRequested;
-        public event Func<string, bool> ShowConfirmationDialogRequested;
-        public event Func<string, string> GetSaveFilePathRequested;
+        public event Func<TransactionViewModel, Transaction?>? ShowTransactionDialogRequested;
+        public event Func<string, bool>? ShowConfirmationDialogRequested;
+        public event Func<string, string>? GetSaveFilePathRequested;
 
-        private ObservableCollection<Transaction> _transactions;
+        private ObservableCollection<Transaction> _transactions = null!;
 
         public ObservableCollection<Transaction> Transactions
         {
@@ -45,7 +48,7 @@ namespace HouseBug.ViewModels
             set => SetProperty(ref _transactions, value);
         }
 
-        private ObservableCollection<Category> _categories;
+        private ObservableCollection<Category> _categories = null!;
 
         public ObservableCollection<Category> Categories
         {
@@ -53,18 +56,18 @@ namespace HouseBug.ViewModels
             set => SetProperty(ref _categories, value);
         }
 
-        public ObservableCollection<MonthlyBudget> MonthlyBudgets { get; set; } = new ObservableCollection<MonthlyBudget>();
+        public ObservableCollection<MonthlyBudget> MonthlyBudgets { get; }
 
-        private MonthlyBudget _selectedMonthlyBudget;
-        public MonthlyBudget SelectedMonthlyBudget
+        private MonthlyBudget? _selectedMonthlyBudget;
+        public MonthlyBudget? SelectedMonthlyBudget
         {
             get => _selectedMonthlyBudget;
             set => SetProperty(ref _selectedMonthlyBudget, value);
         }
 
-        private Transaction _selectedTransaction;
+        private Transaction? _selectedTransaction;
 
-        public Transaction SelectedTransaction
+        public Transaction? SelectedTransaction
         {
             get => _selectedTransaction;
             set => SetProperty(ref _selectedTransaction, value);
@@ -79,9 +82,7 @@ namespace HouseBug.ViewModels
             {
                 if (SetProperty(ref _selectedDate, value))
                 {
-                    LoadTransactionsForMonth();
-                    LoadMonthlySummary();
-                    LoadMonthlyBudgetsAsync();
+                    RefreshDataForSelectedDateAsync().ConfigureAwait(false);
                 }
             }
         }
@@ -170,9 +171,7 @@ namespace HouseBug.ViewModels
                         t.ForceUpdateAmounts();
                     foreach (var b in MonthlyBudgets?.ToList() ?? Enumerable.Empty<MonthlyBudget>())
                         b.ForceUpdateAmounts();
-                    LoadTransactionsForMonth();
-                    LoadMonthlySummary();
-                    LoadMonthlyBudgetsAsync();
+                    RefreshDataForSelectedDateAsync().ConfigureAwait(false);
                 }
             }
         }
@@ -347,6 +346,16 @@ namespace HouseBug.ViewModels
         {
             SelectedCategoryFilter = null;
             SearchText = string.Empty;
+            
+            // Przywróć wszystkie transakcje
+            Transactions.Clear();
+            foreach (var transaction in _allTransactions.OrderByDescending(t => t.Date))
+            {
+                Transactions.Add(transaction);
+            }
+            
+            FilteredTransactions = new List<Transaction>(_allTransactions);
+            LoadMonthlySummary();
             StatusMessage = "Filtry zostały wyczyszczone";
         }
 
@@ -360,121 +369,274 @@ namespace HouseBug.ViewModels
             SelectedDate = SelectedDate.AddMonths(1);
         }
 
-        private async void LoadData()
-        {
-            await LoadDataAsync();
-        }
-
         private async Task LoadDataAsync()
         {
-            Categories.Clear();
-            foreach (var cat in await _budgetManager.GetCategoriesAsync())
-                Categories.Add(cat);
-            LoadTransactionsForMonth();
-            LoadMonthlySummary();
-            await LoadMonthlyBudgetsAsync();
+            SetBusy(true, "Ładowanie danych...");
+            try
+            {
+                var settings = _budgetManager.GetAppSettings();
+                DefaultCurrency = settings.DefaultCurrency;
+                UpdateCurrencySymbol();
 
-            var settings = _budgetManager.GetAppSettings();
-            DefaultCurrency = settings.DefaultCurrency;
-            UpdateCurrencySymbol();
+                Categories.Clear();
+                var categories = await _budgetManager.GetCategoriesAsync();
+                foreach (var category in categories)
+                {
+                    Categories.Add(category);
+                }
+
+                await LoadTransactionsForMonthAsync();
+                await LoadMonthlyBudgetsAsync();
+                LoadMonthlySummary();
+                
+                StatusMessage = "Dane zostały załadowane";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Błąd podczas ładowania danych: {ex.Message}";
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        private async Task LoadTransactionsForMonthAsync()
+        {
+            try
+            {
+                var transactions = await Task.Run(() => _budgetManager.GetTransactionsByMonth(SelectedDate));
+                UpdateTransactionsList(transactions);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Błąd podczas ładowania transakcji: {ex.Message}";
+            }
+        }
+
+        private List<Transaction> _allTransactions = new List<Transaction>();
+
+        private void UpdateTransactionsList(List<Transaction> transactions, bool shouldFilter = true)
+        {
+            if (transactions == null) return;
+            
+            // Zachowaj kopię wszystkich transakcji przed filtrowaniem
+            _allTransactions = new List<Transaction>(transactions);
+            
+            Transactions.Clear();
+            foreach (var transaction in transactions.OrderByDescending(t => t.Date))
+            {
+                Transactions.Add(transaction);
+            }
+
+            if (shouldFilter)
+            {
+                FilterTransactions();
+            }
+        }
+
+        private async Task RefreshDataForSelectedDateAsync()
+        {
+            SetBusy(true, "Ładowanie danych...");
+            try
+            {
+                await LoadTransactionsForMonthAsync();
+                LoadMonthlySummary();
+                await LoadMonthlyBudgetsAsync();
+                StatusMessage = "Dane zostały zaktualizowane";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Błąd podczas ładowania danych: {ex.Message}";
+            }
+            finally
+            {
+                SetBusy(false);
+            }
         }
 
         private async Task LoadMonthlyBudgetsAsync()
         {
-            MonthlyBudgets.Clear();
-            var budgets = await _budgetManager.GetMonthlyBudgetsAsync(SelectedDate.Month, SelectedDate.Year);
-            foreach (var b in budgets)
-                MonthlyBudgets.Add(b);
-        }
-
-        private void LoadTransactionsForMonth()
-        {
-            var transactions = _budgetManager.GetTransactionsByMonth(SelectedDate);
-            Transactions.Clear();
-            foreach (var transaction in transactions)
+            try
             {
-                Transactions.Add(transaction);
+                MonthlyBudgets.Clear();
+                var budgets = await Task.Run(() => 
+                    _budgetManager.GetMonthlyBudgets(SelectedDate.Month, SelectedDate.Year));
+                
+                foreach (var budget in budgets)
+                {
+                    MonthlyBudgets.Add(budget);
+                }
             }
-
-            FilterTransactions();
+            catch (Exception ex)
+            {
+                StatusMessage = $"Błąd podczas ładowania budżetów: {ex.Message}";
+            }
         }
 
-        public void LoadMonthlySummary()
+        private void LoadMonthlySummary()
         {
-            UpdateSummary();
+            var filteredTransactions = FilteredTransactions;
+            TotalIncome = filteredTransactions.Where(t => t.IsIncome).Sum(t => t.Amount);
+            TotalExpenses = filteredTransactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
+            Balance = TotalIncome - TotalExpenses;
         }
 
         private void FilterTransactions()
         {
-            var allTransactions = _budgetManager.GetTransactionsByMonth(SelectedDate);
-            var filteredTransactions = allTransactions.AsEnumerable();
+            // Zacznij od wszystkich transakcji
+            var query = _allTransactions.AsEnumerable();
 
             if (SelectedCategoryFilter != null)
             {
-                filteredTransactions = filteredTransactions.Where(t => t.CategoryId == SelectedCategoryFilter.Id);
+                query = query.Where(t => t.CategoryId == SelectedCategoryFilter.Id);
             }
 
-            if (!string.IsNullOrEmpty(SearchText))
+            if (!string.IsNullOrWhiteSpace(SearchText))
             {
-                filteredTransactions = filteredTransactions.Where(t =>
-                    t.Description.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
-                    t.Category.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+                var searchLower = SearchText.ToLower();
+                query = query.Where(t =>
+                    t.Description?.ToLower().Contains(searchLower) == true ||
+                    t.Category?.Name?.ToLower().Contains(searchLower) == true ||
+                    t.Amount.ToString().Contains(searchLower));
             }
 
+            var filteredList = query.OrderByDescending(t => t.Date).ToList();
+            FilteredTransactions = filteredList;
+
+            // Aktualizacja widocznych transakcji
             Transactions.Clear();
-            foreach (var transaction in filteredTransactions)
+            foreach (var transaction in filteredList)
             {
                 Transactions.Add(transaction);
             }
 
-            UpdateSummary();
+            LoadMonthlySummary();
         }
 
-        private void UpdateSummary()
-        {
-            var currentTransactions = Transactions.ToList();
-            TotalIncome = currentTransactions.Where(t => t.IsIncome).Sum(t => t.Amount);
-            TotalExpenses = currentTransactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
-            Balance = TotalIncome - TotalExpenses;
-        }
+        private List<Transaction> FilteredTransactions { get; set; } = new List<Transaction>();
 
-        public void Dispose()
+        public async Task SaveMonthlyBudgetAsync(MonthlyBudget budget)
         {
-            _budgetManager?.Dispose();
-        }
-        
-        private void GenerateYearlyReport()
-        {
-            var reportDialog = new Views.Dialogs.ReportDialog(_reportGenerator, _budgetManager)
+            if (budget == null) return;
+
+            SetBusy(true, "Zapisywanie budżetu...");
+            try
             {
-                Owner = Application.Current.MainWindow
-            };
-            var result = reportDialog.ShowDialog();
-
-            if (result == true)
+                await _budgetManager.SaveMonthlyBudgetAsync(budget);
+                StatusMessage = "Budżet został zaktualizowany";
+                await LoadMonthlyBudgetsAsync();
+            }
+            catch (Exception ex)
             {
-                StatusMessage = "Raport roczny został wygenerowany i zapisany do pliku.";
+                StatusMessage = $"Błąd podczas zapisywania budżetu: {ex.Message}";
+            }
+            finally
+            {
+                SetBusy(false);
             }
         }
 
-        public async void SaveMonthlyBudget(MonthlyBudget budget)
-        {
-            await _budgetManager.SaveMonthlyBudgetAsync(budget);
-            await LoadMonthlyBudgetsAsync();
-        }
-
-        public async void RefreshCurrencyFromSettings()
+        public async Task RefreshCurrencyFromSettingsAsync()
         {
             var settings = _budgetManager.GetAppSettings();
             DefaultCurrency = settings.DefaultCurrency;
-            UpdateCurrencySymbol();
+            await RefreshDataForSelectedDateAsync();
         }
 
-        public void RefreshStatisticsPanel()
+        public async Task HandleTransactionUpdateAsync(Transaction transaction)
         {
-            OnPropertyChanged(nameof(TotalIncome));
-            OnPropertyChanged(nameof(TotalExpenses));
-            OnPropertyChanged(nameof(Balance));
+            if (transaction == null) return;
+
+            SetBusy(true, "Aktualizowanie transakcji...");
+            try
+            {
+                if (await _budgetManager.UpdateTransactionAsync(transaction))
+                {
+                    LoadMonthlySummary();
+                    StatusMessage = "Transakcja została zaktualizowana";
+                    await LoadMonthlyBudgetsAsync();
+                }
+                else
+                {
+                    StatusMessage = "Nie udało się zaktualizować transakcji";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Błąd podczas aktualizacji transakcji: {ex.Message}";
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        public AppSettings GetAppSettings()
+        {
+            return _budgetManager.GetAppSettings();
+        }
+
+        private void RefreshStatisticsPanel()
+        {
+            LoadMonthlySummary();
+            FilterTransactions();
+        }
+
+        public async Task HandleAppSettingsUpdateAsync(AppSettings settings)
+        {
+            if (settings == null) return;
+
+            SetBusy(true, "Aktualizowanie ustawień...");
+            try
+            {
+                if (await _budgetManager.UpdateAppSettingsAsync(settings))
+                {
+                    await RefreshCurrencyFromSettingsAsync();
+                    RefreshStatisticsPanel();
+                    StatusMessage = "Ustawienia zostały zaktualizowane";
+                }
+                else
+                {
+                    StatusMessage = "Nie udało się zaktualizować ustawień";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Błąd podczas aktualizacji ustawień: {ex.Message}";
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        private async void GenerateYearlyReport()
+        {
+            var filePath = GetSaveFilePathRequested?.Invoke("txt");
+            if (string.IsNullOrEmpty(filePath)) return;
+
+            SetBusy(true, "Generowanie raportu rocznego...");
+            try
+            {
+                var report = _reportGenerator.GenerateYearlyReport(SelectedDate.Year);
+                await _reportGenerator.SaveReportToFileAsync(report, filePath);
+                StatusMessage = $"Raport roczny został zapisany do: {filePath}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Błąd podczas generowania raportu: {ex.Message}";
+            }
+            finally
+            {
+                SetBusy(false);
+            }
+        }
+
+        public new void Dispose()
+        {
+            base.Dispose();
+            _budgetManager?.Dispose();
         }
     }
 }

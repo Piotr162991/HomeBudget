@@ -19,29 +19,44 @@ namespace HouseBug.Services
 
         public string GenerateMonthlyReport(DateTime month)
         {
-            var summary = _budgetManager.GetMonthlySummary(month);
             var transactions = _budgetManager.GetTransactionsByMonth(month);
+            var income = transactions.Where(t => t.IsIncome).Sum(t => t.Amount);
+            var expenses = transactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
+            var balance = income - expenses;
+
+            var categoryGroups = transactions
+                .Where(t => !t.IsIncome)
+                .GroupBy(t => t.Category)
+                .Select(g => new CategorySummary
+                {
+                    CategoryName = g.Key.Name,
+                    Amount = g.Sum(t => t.Amount),
+                    TransactionCount = g.Count(),
+                    Percentage = expenses > 0 ? (double)(g.Sum(t => t.Amount) / expenses) * 100 : 0,
+                    Color = g.Key.Color
+                })
+                .OrderByDescending(cs => cs.Amount)
+                .ToList();
 
             var report = new StringBuilder();
-            report.AppendLine($"=== RAPORT MIESIĘCZNY - {summary.FormattedPeriod.ToUpper()} ===");
+            report.AppendLine($"=== RAPORT MIESIĘCZNY - {month:MMMM yyyy} ===");
             report.AppendLine();
 
             report.AppendLine("PODSUMOWANIE FINANSOWE:");
-            report.AppendLine($"Przychody:     {summary.TotalIncome:C}");
-            report.AppendLine($"Wydatki:       {summary.TotalExpenses:C}");
-            report.AppendLine($"Saldo:         {summary.Balance:C}");
-            report.AppendLine($"Status:        {summary.BalanceStatus}");
+            report.AppendLine($"Przychody:     {income:C}");
+            report.AppendLine($"Wydatki:       {expenses:C}");
+            report.AppendLine($"Saldo:         {balance:C}");
+            report.AppendLine($"Status:        {(balance >= 0 ? "Pozytywny" : "Negatywny")}");
             report.AppendLine();
 
-            if (summary.CategorySummaries.Any())
+            if (categoryGroups.Any())
             {
                 report.AppendLine("WYDATKI WEDŁUG KATEGORII:");
-                foreach (var category in summary.CategorySummaries.OrderByDescending(c => c.Amount))
+                foreach (var category in categoryGroups)
                 {
                     report.AppendLine(
                         $"{category.CategoryName,-20} {category.Amount,10:C} ({category.Percentage,5:F1}%)");
                 }
-
                 report.AppendLine();
             }
 
@@ -88,14 +103,40 @@ namespace HouseBug.Services
 
         public string GenerateYearlyReport(int year)
         {
-            var yearlySummary = _budgetManager.GetYearlySummary(year);
-
             var report = new StringBuilder();
             report.AppendLine($"=== RAPORT ROCZNY - {year} ===");
             report.AppendLine();
 
-            var totalIncome = yearlySummary.Sum(s => s.TotalIncome);
-            var totalExpenses = yearlySummary.Sum(s => s.TotalExpenses);
+            decimal totalIncome = 0;
+            decimal totalExpenses = 0;
+            var monthlySummaries = new List<(DateTime Period, decimal Income, decimal Expenses, List<CategorySummary> Categories)>();
+
+            for (int month = 1; month <= 12; month++)
+            {
+                var date = new DateTime(year, month, 1);
+                var transactions = _budgetManager.GetTransactionsByMonth(date);
+                
+                var monthIncome = transactions.Where(t => t.IsIncome).Sum(t => t.Amount);
+                var monthExpenses = transactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
+                
+                var categorySummaries = transactions
+                    .Where(t => !t.IsIncome)
+                    .GroupBy(t => t.Category)
+                    .Select(g => new CategorySummary
+                    {
+                        CategoryName = g.Key.Name,
+                        Amount = g.Sum(t => t.Amount),
+                        TransactionCount = g.Count(),
+                        Color = g.Key.Color
+                    })
+                    .ToList();
+
+                totalIncome += monthIncome;
+                totalExpenses += monthExpenses;
+                
+                monthlySummaries.Add((date, monthIncome, monthExpenses, categorySummaries));
+            }
+
             var totalBalance = totalIncome - totalExpenses;
 
             report.AppendLine("PODSUMOWANIE ROCZNE:");
@@ -108,24 +149,25 @@ namespace HouseBug.Services
             report.AppendLine($"{"Miesiąc",-15} {"Przychody",12} {"Wydatki",12} {"Saldo",12}");
             report.AppendLine(new string('-', 55));
 
-            foreach (var monthlySummary in yearlySummary)
+            foreach (var summary in monthlySummaries)
             {
-                report.AppendLine($"{monthlySummary.FormattedPeriod,-15} " +
-                                  $"{monthlySummary.TotalIncome,12:C} " +
-                                  $"{monthlySummary.TotalExpenses,12:C} " +
-                                  $"{monthlySummary.Balance,12:C}");
+                var balance = summary.Income - summary.Expenses;
+                report.AppendLine($"{summary.Period:MMMM yyyy,-15} " +
+                                $"{summary.Income,12:C} " +
+                                $"{summary.Expenses,12:C} " +
+                                $"{balance,12:C}");
             }
 
-            var allCategories = yearlySummary
-                .SelectMany(s => s.CategorySummaries)
-                .GroupBy(cs => cs.CategoryName)
+            var yearlyCategories = monthlySummaries
+                .SelectMany(s => s.Categories)
+                .GroupBy(c => c.CategoryName)
                 .Select(g => new CategorySummary
                 {
                     CategoryName = g.Key,
-                    Amount = g.Sum(cs => cs.Amount),
-                    TransactionCount = g.Sum(cs => cs.TransactionCount)
+                    Amount = g.Sum(c => c.Amount),
+                    TransactionCount = g.Sum(c => c.TransactionCount)
                 })
-                .OrderByDescending(cs => cs.Amount)
+                .OrderByDescending(c => c.Amount)
                 .Take(10);
 
             report.AppendLine();
@@ -133,7 +175,7 @@ namespace HouseBug.Services
             report.AppendLine($"{"Kategoria",-20} {"Kwota",12} {"Transakcje",12}");
             report.AppendLine(new string('-', 48));
 
-            foreach (var category in allCategories)
+            foreach (var category in yearlyCategories)
             {
                 report.AppendLine($"{category.CategoryName,-20} {category.Amount,12:C} {category.TransactionCount,12}");
             }
@@ -153,26 +195,6 @@ namespace HouseBug.Services
                 return false;
             }
         }
-
-        public Dictionary<string, object> GenerateStatistics(DateTime startDate, DateTime endDate)
-        {
-            var transactions = _budgetManager.GetTransactionsByDateRange(startDate, endDate);
-            var income = transactions.Where(t => t.IsIncome).Sum(t => t.Amount);
-            var expenses = transactions.Where(t => !t.IsIncome).Sum(t => t.Amount);
-
-            return new Dictionary<string, object>
-            {
-                ["Okres"] = $"{startDate:dd.MM.yyyy} - {endDate:dd.MM.yyyy}",
-                ["Liczba transakcji"] = transactions.Count,
-                ["Łączne przychody"] = income,
-                ["Łączne wydatki"] = expenses,
-                ["Saldo"] = income - expenses,
-                ["Średni dzienny wydatek"] = expenses / Math.Max(1, (endDate - startDate).Days),
-                ["Największy wydatek"] = transactions.Where(t => !t.IsIncome).DefaultIfEmpty().Max(t => t?.Amount ?? 0),
-                ["Największy przychód"] = transactions.Where(t => t.IsIncome).DefaultIfEmpty().Max(t => t?.Amount ?? 0),
-                ["Najczęstsza kategoria"] = transactions.GroupBy(t => t.Category.Name).OrderByDescending(g => g.Count())
-                    .FirstOrDefault()?.Key ?? "Brak"
-            };
-        }
+        
     }
 }

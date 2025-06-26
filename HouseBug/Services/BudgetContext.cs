@@ -68,15 +68,6 @@ namespace HouseBug.Services
                 { 
                     Id = 1,
                     DefaultCurrency = "PLN",
-                    DateFormat = "dd.MM.yyyy",
-                    ShowNotifications = true,
-                    AutoBackup = false,
-                    BackupFrequencyDays = 7,
-                    BackupPath = "",
-                    DarkMode = false,
-                    MonthlyBudgetLimit = 5000,
-                    EnableBudgetWarnings = true,
-                    BudgetWarningPercentage = 80
                 }
             );
         }
