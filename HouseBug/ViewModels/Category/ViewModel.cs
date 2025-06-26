@@ -13,21 +13,7 @@ namespace HouseBug.ViewModels
     {
         private readonly BudgetManager _budgetManager;
         private readonly IDialogService _dialogService;
-
-        public CategoryViewModel() : this(new BudgetManager(), new DialogService())
-        {
-        }
-
-        public CategoryViewModel(BudgetManager budgetManager, IDialogService dialogService)
-        {
-            _budgetManager = budgetManager;
-            _dialogService = dialogService;
-            InitializeCommands();
-            LoadCategories();
-        }
-
-        #region Properties
-
+        
         private ObservableCollection<Category> _categories;
         public ObservableCollection<Category> Categories
         {
@@ -76,38 +62,30 @@ namespace HouseBug.ViewModels
             set => SetProperty(ref _isActive, value);
         }
 
-        public string[] PredefinedColors { get; } = 
-        {
-            "#E74C3C", "#3498DB", "#2ECC71", "#F39C12", "#9B59B6",
-            "#1ABC9C", "#E67E22", "#34495E", "#F1C40F", "#E91E63"
-        };
-
-        #endregion
-
-        #region Commands
-
         public ICommand AddCategoryCommand { get; private set; }
         public ICommand SaveCategoryCommand { get; private set; }
         public ICommand DeleteCategoryCommand { get; private set; }
-        public ICommand CancelEditCommand { get; private set; }
-        public ICommand RefreshCommand { get; private set; }
         public ICommand SelectColorCommand { get; private set; }
+
+        public CategoryViewModel(BudgetManager budgetManager, IDialogService dialogService)
+        {
+            _budgetManager = budgetManager;
+            _dialogService = dialogService;
+            InitializeCommands();
+            LoadCategories();
+        }
+
+        public CategoryViewModel() : this(new BudgetManager(), new DialogService())
+        {
+        }
 
         private void InitializeCommands()
         {
             AddCategoryCommand = CommandFactory.Create(StartAddCategory);
-            SaveCategoryCommand = CommandFactory.Create(SaveCategory, () => !IsBusy && IsValid() && IsEditMode);
-            DeleteCategoryCommand = CommandFactory.Create(DeleteCategory, () => SelectedCategory != null && !IsEditMode);
-            CancelEditCommand = CommandFactory.Create(CancelEdit);
-            RefreshCommand = CommandFactory.Create(RefreshCategories);
+            SaveCategoryCommand = CommandFactory.Create(SaveCategory, () => !IsBusy && IsValid());
+            DeleteCategoryCommand = CommandFactory.Create(DeleteCategory, () => SelectedCategory != null);
             SelectColorCommand = CommandFactory.Create<string>(SelectColor);
         }
-
-        #endregion
-
-        #region Command Methods
-
-        private void StartAddCategory() => StartAddItem();
 
         private async void SaveCategory()
         {
@@ -116,12 +94,12 @@ namespace HouseBug.ViewModels
             await HandleOperationAsync("zapisywanie kategorii", async () =>
             {
                 var category = CreateItemFromInput();
+                bool success;
 
                 if (SelectedCategory?.Id > 0)
                 {
                     category.Id = SelectedCategory.Id;
-                    var success = await _budgetManager.UpdateCategoryAsync(category);
-
+                    success = await _budgetManager.UpdateCategoryAsync(category);
                     if (success)
                     {
                         var index = Categories.IndexOf(SelectedCategory);
@@ -129,20 +107,28 @@ namespace HouseBug.ViewModels
                         SelectedCategory = category;
                         ValidationMessage = "Kategoria została zaktualizowana.";
                     }
-                    else
-                    {
-                        ValidationMessage = "Błąd podczas aktualizacji kategorii.";
-                    }
                 }
                 else
                 {
                     var savedCategory = await _budgetManager.AddCategoryAsync(category);
-                    Categories.Add(savedCategory);
-                    SelectedCategory = savedCategory;
-                    ValidationMessage = "Kategoria została dodana.";
+                    success = savedCategory != null;
+                    if (success)
+                    {
+                        Categories.Add(savedCategory);
+                        SelectedCategory = savedCategory;
+                        ValidationMessage = "Kategoria została dodana.";
+                    }
                 }
 
-                IsEditMode = false;
+                if (success)
+                {
+                    IsEditMode = false;
+                    ClearForm();
+                }
+                else
+                {
+                    ValidationMessage = "Wystąpił błąd podczas zapisywania kategorii.";
+                }
             });
         }
 
@@ -154,118 +140,6 @@ namespace HouseBug.ViewModels
             }
         }
 
-        private async void DeleteCategory()
-        {
-            if (SelectedCategory == null) return;
-
-            var confirmResult = _dialogService.ShowConfirmation(
-                $"Czy na pewno chcesz usunąć kategorię '{SelectedCategory.Name}'?\n" +
-                "Jeśli kategoria ma przypisane transakcje, zostanie tylko dezaktywowana.");
-
-            if (!confirmResult) return;
-
-            await HandleOperationAsync("usuwanie kategorii", async () =>
-            {
-                var success = await _budgetManager.DeleteCategoryAsync(SelectedCategory.Id);
-
-                if (success)
-                {
-                    Categories.Remove(SelectedCategory);
-                    SelectedCategory = null;
-                    ClearForm();
-                    ValidationMessage = "Kategoria została usunięta.";
-                }
-                else
-                {
-                    ValidationMessage = "Błąd podczas usuwania kategorii.";
-                }
-            });
-        }
-
-        private async void RefreshCategories()
-        {
-            await HandleOperationAsync("odświeżanie kategorii", async () =>
-            {
-                await LoadCategoriesAsync();
-                ValidationMessage = "Lista kategorii została odświeżona.";
-            });
-        }
-
-        #endregion
-
-        #region Data Loading
-
-        private async void LoadCategories()
-        {
-            await LoadCategoriesAsync();
-        }
-
-        private async Task LoadCategoriesAsync()
-        {
-            await HandleOperationAsync("ładowanie kategorii", async () =>
-            {
-                var categories = await Task.Run(() => _budgetManager.GetAllCategories());
-                Categories = new ObservableCollection<Category>(categories);
-            });
-        }
-
-        #endregion
-
-        #region Validation
-
-        protected override string[] GetValidatableProperties()
-        {
-            return new[] { nameof(Name), nameof(Description) };
-        }
-
-        protected override string GetValidationError(string propertyName)
-        {
-            string error = string.Empty;
-
-            switch (propertyName)
-            {
-                case nameof(Name):
-                    if (string.IsNullOrWhiteSpace(Name))
-                        error = "Nazwa jest wymagana";
-                    else if (Name.Length > 50)
-                        error = "Nazwa nie może być dłuższa niż 50 znaków";
-                    else if (Categories?.Any(c => c.Name.Equals(Name, StringComparison.OrdinalIgnoreCase) && 
-                                                 c.Id != (SelectedCategory?.Id ?? 0)) == true)
-                        error = "Kategoria o tej nazwie już istnieje";
-                    break;
-
-                case nameof(Description):
-                    if (!string.IsNullOrEmpty(Description) && Description.Length > 200)
-                        error = "Opis nie może być dłuższy niż 200 znaków";
-                    break;
-            }
-
-            return error;
-        }
-
-        protected override bool IsValid()
-        {
-            var isValid = base.IsValid();
-            if (!isValid)
-            {
-                ValidationMessage = "Proszę poprawić błędy walidacji.";
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(Name))
-            {
-                ValidationMessage = "Nazwa jest wymagana.";
-                return false;
-            }
-
-            ValidationMessage = string.Empty;
-            return true;
-        }
-
-        #endregion
-
-        #region Override Methods
-
         protected override void PopulateFormFromItem(Category item)
         {
             if (item != null)
@@ -274,6 +148,7 @@ namespace HouseBug.ViewModels
                 Description = item.Description;
                 Color = item.Color;
                 IsActive = item.IsActive;
+                IsEditMode = true;
             }
         }
 
@@ -283,6 +158,7 @@ namespace HouseBug.ViewModels
             Description = string.Empty;
             Color = "#3498DB";
             IsActive = true;
+            ValidationMessage = string.Empty;
         }
 
         protected override Category CreateItemFromInput()
@@ -314,15 +190,88 @@ namespace HouseBug.ViewModels
             return await _budgetManager.DeleteCategoryAsync(item.Id);
         }
 
-        protected override void Dispose(bool disposing)
+        private async void LoadCategories()
         {
-            if (disposing)
+            await HandleOperationAsync("ładowanie kategorii", async () =>
             {
-                _budgetManager?.Dispose();
-            }
-            base.Dispose(disposing);
+                var categories = await Task.Run(() => _budgetManager.GetAllCategories());
+                Categories = new ObservableCollection<Category>(categories);
+            });
         }
 
-        #endregion
+        private async Task LoadCategoriesAsync()
+        {
+            await HandleOperationAsync("ładowanie kategorii", async () =>
+            {
+                var categories = await Task.Run(() => _budgetManager.GetAllCategories());
+                Categories = new ObservableCollection<Category>(categories.OrderBy(c => c.Name));
+            });
+        }
+
+        protected override string[] GetValidatableProperties()
+        {
+            return new[] { nameof(Name), nameof(Description) };
+        }
+
+        protected override string GetValidationError(string propertyName)
+        {
+            string error = string.Empty;
+
+            switch (propertyName)
+            {
+                case nameof(Name):
+                    if (string.IsNullOrWhiteSpace(Name))
+                        error = "Nazwa jest wymagana";
+                    else if (Name.Length > 50)
+                        error = "Nazwa nie może być dłuższa niż 50 znaków";
+                    else if (Categories?.Any(c => c.Name.Equals(Name, StringComparison.OrdinalIgnoreCase) && 
+                                                c.Id != (SelectedCategory?.Id ?? 0)) == true)
+                        error = "Kategoria o tej nazwie już istnieje";
+                    break;
+
+                case nameof(Description):
+                    if (!string.IsNullOrEmpty(Description) && Description.Length > 200)
+                        error = "Opis nie może być dłuższy niż 200 znaków";
+                    break;
+            }
+
+            return error;
+        }
+
+        private void StartAddCategory()
+        {
+            IsEditMode = true;
+            ClearForm();
+            SelectedCategory = null;
+            ValidationMessage = string.Empty;
+        }
+
+        private async void DeleteCategory()
+        {
+            if (SelectedCategory == null) return;
+
+            var confirmResult = _dialogService.ShowConfirmation(
+                $"Czy na pewno chcesz usunąć kategorię '{SelectedCategory.Name}'?\n" +
+                "Jeśli kategoria ma przypisane transakcje, zostanie tylko dezaktywowana.");
+
+            if (!confirmResult) return;
+
+            await HandleOperationAsync("usuwanie kategorii", async () =>
+            {
+                var success = await _budgetManager.DeleteCategoryAsync(SelectedCategory.Id);
+
+                if (success)
+                {
+                    Categories.Remove(SelectedCategory);
+                    SelectedCategory = null;
+                    ClearForm();
+                    ValidationMessage = "Kategoria została usunięta.";
+                }
+                else
+                {
+                    ValidationMessage = "Błąd podczas usuwania kategorii.";
+                }
+            });
+        }
     }
 }

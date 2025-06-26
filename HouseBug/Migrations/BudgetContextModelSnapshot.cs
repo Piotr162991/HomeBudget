@@ -23,41 +23,10 @@ namespace HouseBug.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<bool>("AutoBackup")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("BackupFrequencyDays")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("BackupPath")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("BudgetWarningPercentage")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("DarkMode")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("DateFormat")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("DefaultCurrency")
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("EnableBudgetWarnings")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("MonthlyBudgetLimit")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<bool>("ShowNotifications")
-                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -67,16 +36,7 @@ namespace HouseBug.Migrations
                         new
                         {
                             Id = 1,
-                            AutoBackup = false,
-                            BackupFrequencyDays = 7,
-                            BackupPath = "",
-                            BudgetWarningPercentage = 80,
-                            DarkMode = false,
-                            DateFormat = "dd.MM.yyyy",
-                            DefaultCurrency = "PLN",
-                            EnableBudgetWarnings = true,
-                            MonthlyBudgetLimit = 5000m,
-                            ShowNotifications = true
+                            DefaultCurrency = "PLN"
                         });
                 });
 
@@ -94,11 +54,6 @@ namespace HouseBug.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Icon")
-                        .IsRequired()
-                        .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
@@ -119,7 +74,6 @@ namespace HouseBug.Migrations
                             Id = 1,
                             Color = "#E74C3C",
                             Description = "Zakupy spożywcze i restauracje",
-                            Icon = "🍕",
                             IsActive = true,
                             Name = "Jedzenie"
                         },
@@ -128,7 +82,6 @@ namespace HouseBug.Migrations
                             Id = 2,
                             Color = "#3498DB",
                             Description = "Paliwo, bilety komunikacji publicznej",
-                            Icon = "🚗",
                             IsActive = true,
                             Name = "Transport"
                         },
@@ -137,7 +90,6 @@ namespace HouseBug.Migrations
                             Id = 3,
                             Color = "#9B59B6",
                             Description = "Kino, gry, hobby",
-                            Icon = "🎮",
                             IsActive = true,
                             Name = "Rozrywka"
                         },
@@ -146,7 +98,6 @@ namespace HouseBug.Migrations
                             Id = 4,
                             Color = "#F39C12",
                             Description = "Czynsz, prąd, gaz, internet",
-                            Icon = "💡",
                             IsActive = true,
                             Name = "Rachunki"
                         },
@@ -155,7 +106,6 @@ namespace HouseBug.Migrations
                             Id = 5,
                             Color = "#27AE60",
                             Description = "Pensja i dodatkowe dochody",
-                            Icon = "💰",
                             IsActive = true,
                             Name = "Wynagrodzenie"
                         },
@@ -164,27 +114,8 @@ namespace HouseBug.Migrations
                             Id = 6,
                             Color = "#E67E22",
                             Description = "Lekarze, apteka, suplementy",
-                            Icon = "⚕️",
                             IsActive = true,
                             Name = "Zdrowie"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Color = "#1ABC9C",
-                            Description = "Ubrania, elektronika, inne",
-                            Icon = "🛍️",
-                            IsActive = true,
-                            Name = "Zakupy"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Color = "#34495E",
-                            Description = "Kursy, książki, szkolenia",
-                            Icon = "📚",
-                            IsActive = true,
-                            Name = "Edukacja"
                         });
                 });
 
@@ -233,11 +164,6 @@ namespace HouseBug.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Date")

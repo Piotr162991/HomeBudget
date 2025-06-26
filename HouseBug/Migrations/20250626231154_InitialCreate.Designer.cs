@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HouseBug.Migrations
 {
     [DbContext(typeof(BudgetContext))]
-    [Migration("20250626164243_AddCurrencyToTransaction")]
-    partial class AddCurrencyToTransaction
+    [Migration("20250626231154_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace HouseBug.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
-                    
+
                     b.Property<string>("DefaultCurrency")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -39,16 +39,7 @@ namespace HouseBug.Migrations
                         new
                         {
                             Id = 1,
-                            AutoBackup = false,
-                            BackupFrequencyDays = 7,
-                            BackupPath = "",
-                            BudgetWarningPercentage = 80,
-                            DarkMode = false,
-                            DateFormat = "dd.MM.yyyy",
-                            DefaultCurrency = "PLN",
-                            EnableBudgetWarnings = true,
-                            MonthlyBudgetLimit = 5000m,
-                            ShowNotifications = true
+                            DefaultCurrency = "PLN"
                         });
                 });
 
@@ -66,11 +57,6 @@ namespace HouseBug.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Icon")
-                        .IsRequired()
-                        .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
@@ -133,22 +119,6 @@ namespace HouseBug.Migrations
                             Description = "Lekarze, apteka, suplementy",
                             IsActive = true,
                             Name = "Zdrowie"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Color = "#1ABC9C",
-                            Description = "Ubrania, elektronika, inne",
-                            IsActive = true,
-                            Name = "Zakupy"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Color = "#34495E",
-                            Description = "Kursy, książki, szkolenia",
-                            IsActive = true,
-                            Name = "Edukacja"
                         });
                 });
 
@@ -197,11 +167,6 @@ namespace HouseBug.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Date")

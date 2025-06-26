@@ -57,7 +57,7 @@
                 <MenuItem Header="O programie" Click="AboutMenuItem_Click"/>
             </MenuItem>
             <MenuItem Header="Ustawienia" Foreground="White">
-                <MenuItem Header="⚙️ Edytuj ustawienia aplikacji" Click="AppSettingsMenuItem_Click"/>
+                <MenuItem Header="Edytuj ustawienia aplikacji" Click="AppSettingsMenuItem_Click"/>
             </MenuItem>
         </Menu>
 
@@ -406,14 +406,5 @@
                 </TabItem>
             </TabControl>
         </Grid>
-
-        <!-- Stopka -->
-        <StatusBar Grid.Row="2" Background="{StaticResource PrimaryBrush}">
-            <TextBlock Text="© 2023 HouseBug. Wszelkie prawa zastrzeżone." 
-                       Foreground="White" 
-                       HorizontalAlignment="Center" 
-                       VerticalAlignment="Center"
-                       Margin="0,0,0,0"/>
-        </StatusBar>
     </Grid>
 </Window>
