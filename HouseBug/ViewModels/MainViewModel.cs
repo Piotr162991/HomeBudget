@@ -17,7 +17,7 @@ namespace HouseBug.ViewModels
 {
     public class MainViewModel : ViewModelBase, IDisposable
     {
-        private readonly BudgetManager _budgetManager;
+        public readonly BudgetManager _budgetManager;  // Zmieniono z private na public
         private readonly ReportGenerator _reportGenerator;
 
         public MainViewModel()
@@ -27,6 +27,7 @@ namespace HouseBug.ViewModels
 
             Transactions = new ObservableCollection<Transaction>();
             Categories = new ObservableCollection<Category>();
+            MonthlyBudgets = new ObservableCollection<MonthlyBudget>();
 
             InitializeCommands();
             LoadData();
@@ -52,6 +53,15 @@ namespace HouseBug.ViewModels
             set => SetProperty(ref _categories, value);
         }
 
+        public ObservableCollection<MonthlyBudget> MonthlyBudgets { get; set; } = new ObservableCollection<MonthlyBudget>();
+
+        private MonthlyBudget _selectedMonthlyBudget;
+        public MonthlyBudget SelectedMonthlyBudget
+        {
+            get => _selectedMonthlyBudget;
+            set => SetProperty(ref _selectedMonthlyBudget, value);
+        }
+
         private Transaction _selectedTransaction;
 
         public Transaction SelectedTransaction
@@ -71,6 +81,7 @@ namespace HouseBug.ViewModels
                 {
                     LoadTransactionsForMonth();
                     LoadMonthlySummary();
+                    LoadMonthlyBudgetsAsync();
                 }
             }
         }
@@ -133,6 +144,50 @@ namespace HouseBug.ViewModels
         {
             get => _statusMessage;
             set => SetProperty(ref _statusMessage, value);
+        }
+
+        private string _currencySymbol = "zł";
+        public string CurrencySymbol
+        {
+            get => _currencySymbol;
+            set => SetProperty(ref _currencySymbol, value);
+        }
+
+        private string _defaultCurrency = "PLN";
+        public string DefaultCurrency
+        {
+            get => _defaultCurrency;
+            set
+            {
+                if (SetProperty(ref _defaultCurrency, value))
+                {
+                    UpdateCurrencySymbol();
+                    OnPropertyChanged(nameof(CurrencySymbol));
+                    OnPropertyChanged(nameof(TotalIncome));
+                    OnPropertyChanged(nameof(TotalExpenses));
+                    OnPropertyChanged(nameof(Balance));
+                    // Wymuś powiadomienie o zmianie Amount w każdej transakcji
+                    foreach (var t in Transactions?.ToList() ?? Enumerable.Empty<Transaction>())
+                        t.ForceUpdateAmounts();
+                    // Wymuś powiadomienie o zmianie kwot w każdym budżecie
+                    foreach (var b in MonthlyBudgets?.ToList() ?? Enumerable.Empty<MonthlyBudget>())
+                        b.ForceUpdateAmounts();
+                    LoadTransactionsForMonth();
+                    LoadMonthlySummary();
+                    LoadMonthlyBudgetsAsync();
+                }
+            }
+        }
+
+        private void UpdateCurrencySymbol()
+        {
+            switch (DefaultCurrency)
+            {
+                case "PLN": CurrencySymbol = "zł"; break;
+                case "USD": CurrencySymbol = "$"; break;
+                case "GBP": CurrencySymbol = "£"; break;
+                default: CurrencySymbol = DefaultCurrency; break;
+            }
         }
 
         public ICommand AddTransactionCommand { get; private set; }
@@ -309,29 +364,29 @@ namespace HouseBug.ViewModels
 
         private async void LoadData()
         {
-            SetBusy(true, "Ładowanie danych...");
             await LoadDataAsync();
-            SetBusy(false);
         }
 
         private async Task LoadDataAsync()
         {
-            try
-            {
-                var categories = _budgetManager.GetAllCategories();
-                Categories.Clear();
-                foreach (var category in categories)
-                {
-                    Categories.Add(category);
-                }
+            Categories.Clear();
+            foreach (var cat in await _budgetManager.GetCategoriesAsync())
+                Categories.Add(cat);
+            LoadTransactionsForMonth();
+            LoadMonthlySummary();
+            await LoadMonthlyBudgetsAsync();
 
-                LoadTransactionsForMonth();
-                LoadMonthlySummary();
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Błąd podczas ładowania danych: {ex.Message}";
-            }
+            var settings = _budgetManager.GetAppSettings();
+            DefaultCurrency = settings.DefaultCurrency;
+            UpdateCurrencySymbol();
+        }
+
+        private async Task LoadMonthlyBudgetsAsync()
+        {
+            MonthlyBudgets.Clear();
+            var budgets = await _budgetManager.GetMonthlyBudgetsAsync(SelectedDate.Month, SelectedDate.Year);
+            foreach (var b in budgets)
+                MonthlyBudgets.Add(b);
         }
 
         private void LoadTransactionsForMonth()
@@ -346,7 +401,7 @@ namespace HouseBug.ViewModels
             FilterTransactions();
         }
 
-        private void LoadMonthlySummary()
+        public void LoadMonthlySummary()
         {
             UpdateSummary();
         }
@@ -404,6 +459,24 @@ namespace HouseBug.ViewModels
             }
         }
 
+        public async void SaveMonthlyBudget(MonthlyBudget budget)
+        {
+            await _budgetManager.SaveMonthlyBudgetAsync(budget);
+            await LoadMonthlyBudgetsAsync();
+        }
 
+        public async void RefreshCurrencyFromSettings()
+        {
+            var settings = _budgetManager.GetAppSettings();
+            DefaultCurrency = settings.DefaultCurrency;
+            UpdateCurrencySymbol();
+        }
+
+        public void RefreshStatisticsPanel()
+        {
+            OnPropertyChanged(nameof(TotalIncome));
+            OnPropertyChanged(nameof(TotalExpenses));
+            OnPropertyChanged(nameof(Balance));
+        }
     }
 }

@@ -1,10 +1,10 @@
-﻿
-<Window x:Class="HouseBug.Views.MainWindow"
+﻿<Window x:Class="HouseBug.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:HouseBug.ViewModels"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d"
         Title="HouseBug - Budżet Domowy"
         Background="#FF2C3E50"
@@ -58,6 +58,9 @@
             <MenuItem Header="Pomoc" Foreground="White">
                 <MenuItem Header="O programie" Click="AboutMenuItem_Click"/>
             </MenuItem>
+            <MenuItem Header="Ustawienia" Foreground="White">
+                <MenuItem Header="⚙️ Edytuj ustawienia aplikacji" Click="AppSettingsMenuItem_Click"/>
+            </MenuItem>
         </Menu>
 
         <!-- Główna zawartość -->
@@ -91,10 +94,11 @@
                                    Command="{Binding ShowPreviousMonthCommand}"
                                    Style="{StaticResource PrimaryButtonStyle}"
                                    Width="30" Height="30"
-                                   Padding="0"/>
+                                   Padding="0"
+                                   ToolTip="Poprzedni miesiąc"/>
 
                             <TextBlock Grid.Column="1" 
-                                      Text="{Binding SelectedDate, StringFormat='MMMM yyyy'}"
+                                      Text="{Binding SelectedDate, StringFormat='MMMM yyyy', ConverterCulture=pl-PL}"
                                       VerticalAlignment="Center"
                                       HorizontalAlignment="Center"
                                       FontWeight="SemiBold"
@@ -105,7 +109,8 @@
                                    Command="{Binding ShowNextMonthCommand}"
                                    Style="{StaticResource PrimaryButtonStyle}"
                                    Width="30" Height="30"
-                                   Padding="0"/>
+                                   Padding="0"
+                                   ToolTip="Następny miesiąc"/>
                         </Grid>
 
                         <!-- Statystyki finansowe -->
@@ -120,10 +125,18 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Przychody:" Foreground="{StaticResource MutedTextBrush}"/>
-                                    <TextBlock Grid.Column="1" 
-                                              Text="{Binding TotalIncome, StringFormat=C}" 
-                                              Foreground="{StaticResource SuccessBrush}"
-                                              FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="1">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                                <Binding Path="TotalIncome"/>
+                                                <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                        <TextBlock.Foreground>
+                                            <StaticResource ResourceKey="SuccessBrush"/>
+                                        </TextBlock.Foreground>
+                                        <TextBlock.FontWeight>SemiBold</TextBlock.FontWeight>
+                                    </TextBlock>
                                 </Grid>
 
                                 <Grid Margin="0,0,0,5">
@@ -132,10 +145,18 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Wydatki:" Foreground="{StaticResource MutedTextBrush}"/>
-                                    <TextBlock Grid.Column="1" 
-                                              Text="{Binding TotalExpenses, StringFormat=C}" 
-                                              Foreground="{StaticResource DangerBrush}"
-                                              FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="1">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                                <Binding Path="TotalExpenses"/>
+                                                <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                        <TextBlock.Foreground>
+                                            <StaticResource ResourceKey="DangerBrush"/>
+                                        </TextBlock.Foreground>
+                                        <TextBlock.FontWeight>SemiBold</TextBlock.FontWeight>
+                                    </TextBlock>
                                 </Grid>
 
                                 <Separator Margin="0,5"/>
@@ -146,10 +167,15 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Saldo:" FontWeight="SemiBold"/>
-                                    <TextBlock Grid.Column="1" 
-                                              Text="{Binding Balance, StringFormat=C}" 
-                                              FontWeight="Bold"
-                                              FontSize="16">
+                                    <TextBlock Grid.Column="1">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                                <Binding Path="Balance"/>
+                                                <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                        <TextBlock.FontWeight>Bold</TextBlock.FontWeight>
+                                        <TextBlock.FontSize>16</TextBlock.FontSize>
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Style.Triggers>
@@ -230,146 +256,159 @@
                          Background="{StaticResource BorderBrush}"/>
 
             <!-- Lista transakcji -->
-            <Border Grid.Column="2" Style="{StaticResource CardStyle}" Margin="5,10,10,10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Nagłówek listy -->
-                    <Grid Grid.Row="0" Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <TextBlock Grid.Column="0" 
-                                  Text="LISTA TRANSAKCJI" 
-                                  Style="{StaticResource HeaderLabelStyle}"/>
-
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Button Command="{Binding EditTransactionCommand}"
-                                   Style="{StaticResource PrimaryButtonStyle}"
-                                   Margin="0,0,5,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="✏️" Margin="0,0,5,0"/>
-                                    <TextBlock Text="Edytuj"/>
-                                </StackPanel>
-                            </Button>
-
-                            <Button Command="{Binding DeleteTransactionCommand}"
-                                   Style="{StaticResource DangerButtonStyle}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="🗑️" Margin="0,0,5,0"/>
-                                    <TextBlock Text="Usuń"/>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
+            <TabControl Grid.Column="2" Margin="5,10,10,10">
+                <TabItem Header="Planowany budżet">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <!-- Nagłówek -->
+                        <TextBlock Grid.Row="0"
+                                   Text="PLANOWANY BUDŻET"
+                                   Style="{StaticResource HeaderLabelStyle}"
+                                   Margin="0,0,0,10"/>
+                        <!-- DataGrid z budżetem -->
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding MonthlyBudgets}"
+                                  SelectedItem="{Binding SelectedMonthlyBudget}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  Margin="0"
+                                  IsReadOnly="False"
+                                  Style="{StaticResource ModernDataGridStyle}"
+                                  CellEditEnding="MonthlyBudgetDataGrid_CellEditEnding">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Kategoria" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="12" Height="12" Background="{Binding Category.Color}" CornerRadius="6" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding Category.Name}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Miesiąc" Binding="{Binding MonthName}" IsReadOnly="True" Width="120"/>
+                                <DataGridTemplateColumn Header="Planowana kwota" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock>
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                                        <Binding Path="PlannedAmount"/>
+                                                        <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                                <TextBlock.TextAlignment>Right</TextBlock.TextAlignment>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding PlannedAmount, UpdateSourceTrigger=LostFocus}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Wydano" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock>
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                                        <Binding Path="SpentAmount"/>
+                                                        <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Pozostało" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock>
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                                        <Binding Path="RemainingAmount"/>
+                                                        <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
                     </Grid>
-
-                    <!-- DataGrid z transakcjami -->
-                    <DataGrid Grid.Row="1" 
-                             ItemsSource="{Binding Transactions}"
-                             SelectedItem="{Binding SelectedTransaction}"
-                             Style="{StaticResource ModernDataGridStyle}"
-                             AutoGenerateColumns="False"
-                             IsReadOnly="True"
-                             SelectionMode="Single">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Data" 
-                                              Binding="{Binding Date, StringFormat=dd.MM.yyyy}" 
-                                              Width="100"/>
-                            
-                            <DataGridTemplateColumn Header="Kategoria" Width="150">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Border Width="12" Height="12" 
-                                                   Background="{Binding Category.Color}" 
-                                                   CornerRadius="6" 
-                                                   Margin="0,0,8,0"/>
-                                            <TextBlock Text="{Binding Category.Name}" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            
-                            <DataGridTextColumn Header="Opis" 
-                                              Binding="{Binding Description}" 
-                                              Width="*"/>
-                            
-                            <DataGridTemplateColumn Header="Kwota" Width="120">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding FormattedAmount}" 
-                                                  FontWeight="SemiBold"
-                                                  HorizontalAlignment="Right">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsIncome}" Value="True">
-                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding IsIncome}" Value="False">
-                                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <!-- Informacja o braku danych -->
-                    <TextBlock Grid.Row="1" 
-                              Text="Brak transakcji do wyświetlenia"
-                              HorizontalAlignment="Center"
-                              VerticalAlignment="Center"
-                              FontSize="16"
-                              Foreground="{StaticResource MutedTextBrush}"
-                              Visibility="{Binding Transactions.Count, Converter={StaticResource CountToVisibilityConverter}}"/>
-                </Grid>
-            </Border>
+                </TabItem>
+                <TabItem Header="Historia transakcji">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <!-- Nagłówek -->
+                        <TextBlock Grid.Row="0"
+                                   Text="HISTORIA TRANSAKCJI"
+                                   Style="{StaticResource HeaderLabelStyle}"
+                                   Margin="0,0,0,10"/>
+                        <!-- DataGrid z transakcjami -->
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding Transactions}"
+                                  SelectedItem="{Binding SelectedTransaction}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  Margin="0"
+                                  IsReadOnly="False"
+                                  Style="{StaticResource ModernDataGridStyle}"
+                                  CellEditEnding="TransactionDataGrid_CellEditEnding">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Data" Binding="{Binding Date, Converter={StaticResource DateStringConverter}, ConverterCulture=pl-PL}" Width="120"/>
+                                <DataGridTemplateColumn Header="Kwota" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock>
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                                        <Binding Path="Amount"/>
+                                                        <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsIncome}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsIncome}" Value="False">
+                                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Kategoria" Binding="{Binding Category.Name}" Width="*"/>
+                                <DataGridTextColumn Header="Opis" Binding="{Binding Description}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+            </TabControl>
         </Grid>
 
-        <!-- Status bar -->
-        <StatusBar Grid.Row="2" Background="{StaticResource BackgroundBrush}">
-            <StatusBarItem>
-                <TextBlock Text="{Binding StatusMessage}" 
-                          Foreground="{StaticResource TextBrush}"/>
-            </StatusBarItem>
-            <StatusBarItem HorizontalAlignment="Right">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Transakcji: " Foreground="{StaticResource MutedTextBrush}"/>
-                    <TextBlock Text="{Binding Transactions.Count}" FontWeight="SemiBold"/>
-                </StackPanel>
-            </StatusBarItem>
+        <!-- Stopka -->
+        <StatusBar Grid.Row="2" Background="{StaticResource PrimaryBrush}">
+            <TextBlock Text="© 2023 HouseBug. Wszelkie prawa zastrzeżone." 
+                       Foreground="White" 
+                       HorizontalAlignment="Center" 
+                       VerticalAlignment="Center"
+                       Margin="0,0,0,0"/>
         </StatusBar>
-
-        <!-- Loading overlay -->
-        <Grid Grid.RowSpan="3" 
-              Background="#80000000" 
-              Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Background="White" 
-                   CornerRadius="8" 
-                   Padding="30" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center">
-                <StackPanel>
-                    <ProgressBar IsIndeterminate="True" 
-                                Height="20" 
-                                Width="200" 
-                                Margin="0,0,0,10"/>
-                    <TextBlock Text="{Binding BusyMessage}" 
-                              HorizontalAlignment="Center" 
-                              FontSize="14"/>
-                </StackPanel>
-            </Border>
-        </Grid>
     </Grid>
 </Window>

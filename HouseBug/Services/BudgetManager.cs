@@ -288,6 +288,78 @@ namespace HouseBug.Services
             return budgets;
         }
 
+        // --- ASYNC API dla planowania budżetu ---
+        public async Task<List<Category>> GetCategoriesAsync()
+        {
+            return await _context.Categories
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        public async Task<List<MonthlyBudget>> GetMonthlyBudgetsAsync(int month, int year)
+        {
+            var budgets = await _context.MonthlyBudgets
+                .Include(mb => mb.Category)
+                .Where(mb => mb.Month == month && mb.Year == year)
+                .ToListAsync();
+
+            var startDate = new DateTime(year, month, 1);
+            var endDate = startDate.AddMonths(1).AddDays(-1);
+
+            foreach (var budget in budgets)
+            {
+                budget.SpentAmount = _context.Transactions
+                    .Where(t => t.CategoryId == budget.CategoryId &&
+                               t.Date >= startDate &&
+                               t.Date <= endDate &&
+                               !t.IsIncome)
+                    .Sum(t => t.Amount);
+            }
+
+            // Dodaj brakujące budżety dla aktywnych kategorii
+            var allCategories = await GetCategoriesAsync();
+            foreach (var cat in allCategories)
+            {
+                if (!budgets.Any(b => b.CategoryId == cat.Id))
+                {
+                    budgets.Add(new MonthlyBudget
+                    {
+                        CategoryId = cat.Id,
+                        Category = cat,
+                        Month = month,
+                        Year = year,
+                        PlannedAmount = 0,
+                        SpentAmount = 0
+                    });
+                }
+            }
+
+
+            return budgets.OrderBy(b => b.Category.Name).ToList();
+        }
+
+        public async Task SaveMonthlyBudgetAsync(MonthlyBudget budget)
+        {
+            var existing = await _context.MonthlyBudgets
+                .FirstOrDefaultAsync(mb => mb.CategoryId == budget.CategoryId && mb.Month == budget.Month && mb.Year == budget.Year);
+            if (existing != null)
+            {
+                existing.PlannedAmount = budget.PlannedAmount;
+            }
+            else
+            {
+                _context.MonthlyBudgets.Add(new MonthlyBudget
+                {
+                    CategoryId = budget.CategoryId,
+                    Month = budget.Month,
+                    Year = budget.Year,
+                    PlannedAmount = budget.PlannedAmount
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+
         #endregion
 
         #region Settings Management

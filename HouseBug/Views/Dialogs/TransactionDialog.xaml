@@ -35,9 +35,20 @@
                                  GroupName="TransactionType"/>
                 </StackPanel>
                 <TextBlock Text="Kwota:" Style="{StaticResource LabelStyle}"/>
-                <TextBox Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"
-                        Style="{StaticResource ModernTextBoxStyle}"
-                        ToolTip="Wprowadź kwotę transakcji"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" 
+                            Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, StringFormat=N2}"
+                            Style="{StaticResource ModernTextBoxStyle}"
+                            ToolTip="Wprowadź kwotę transakcji"/>
+                    <TextBlock Grid.Column="1"
+                              Text="{Binding DataContext.CurrencySymbol, RelativeSource={RelativeSource AncestorType=Window}}"
+                              VerticalAlignment="Center"
+                              Margin="5,0,0,0"/>
+                </Grid>
 
                 <TextBlock Text="Opis:" Style="{StaticResource LabelStyle}"/>
                 <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True}"

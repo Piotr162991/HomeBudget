@@ -51,7 +51,7 @@
                 </StackPanel>
                 
                 <TextBlock Grid.Column="2" 
-                          Text="{Binding FormattedAmount}"
+                          Text="{Binding Amount, Converter={StaticResource CurrencyValueConverter}, ConverterParameter={Binding DataContext.CurrencySymbol, RelativeSource={RelativeSource AncestorType=Window}}}"
                           FontWeight="Bold"
                           FontSize="16"
                           Foreground="{Binding IsIncome, Converter={StaticResource BoolToColorConverter}}"
@@ -83,18 +83,36 @@
                     
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Przychody:" Foreground="{StaticResource MutedTextBrush}"/>
-                        <TextBlock Text="{Binding TotalIncome, StringFormat=C}" 
-                                  Foreground="{StaticResource SuccessBrush}"
-                                  FontWeight="Bold"
-                                  FontSize="16"/>
+                        <TextBlock>
+                            <TextBlock.Text>
+                                <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                    <Binding Path="TotalIncome"/>
+                                    <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                </MultiBinding>
+                            </TextBlock.Text>
+                            <TextBlock.Foreground>
+                                <StaticResource ResourceKey="SuccessBrush"/>
+                            </TextBlock.Foreground>
+                            <TextBlock.FontWeight>Bold</TextBlock.FontWeight>
+                            <TextBlock.FontSize>16</TextBlock.FontSize>
+                        </TextBlock>
                     </StackPanel>
                     
                     <StackPanel Grid.Column="1">
                         <TextBlock Text="Wydatki:" Foreground="{StaticResource MutedTextBrush}"/>
-                        <TextBlock Text="{Binding TotalExpenses, StringFormat=C}" 
-                                  Foreground="{StaticResource DangerBrush}"
-                                  FontWeight="Bold"
-                                  FontSize="16"/>
+                        <TextBlock>
+                            <TextBlock.Text>
+                                <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                    <Binding Path="TotalExpenses"/>
+                                    <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                </MultiBinding>
+                            </TextBlock.Text>
+                            <TextBlock.Foreground>
+                                <StaticResource ResourceKey="DangerBrush"/>
+                            </TextBlock.Foreground>
+                            <TextBlock.FontWeight>Bold</TextBlock.FontWeight>
+                            <TextBlock.FontSize>16</TextBlock.FontSize>
+                        </TextBlock>
                     </StackPanel>
                 </Grid>
                 
@@ -102,9 +120,15 @@
                 
                 <StackPanel Grid.Row="3">
                     <TextBlock Text="{Binding BalanceStatus}" Foreground="{StaticResource MutedTextBrush}"/>
-                    <TextBlock Text="{Binding Balance, StringFormat=C}" 
-                              FontWeight="Bold"
-                              FontSize="18">
+                    <TextBlock>
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{StaticResource CurrencyMultiValueConverter}">
+                                <Binding Path="Balance"/>
+                                <Binding Path="DataContext.CurrencySymbol" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                            </MultiBinding>
+                        </TextBlock.Text>
+                        <TextBlock.FontWeight>Bold</TextBlock.FontWeight>
+                        <TextBlock.FontSize>18</TextBlock.FontSize>
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Style.Triggers>
@@ -150,7 +174,7 @@
                           VerticalAlignment="Center"/>
                 
                 <TextBlock Grid.Column="2" 
-                          Text="{Binding Amount, StringFormat=C}" 
+                          Text="{Binding Amount, Converter={StaticResource CurrencyValueConverter}, ConverterParameter={Binding DataContext.CurrencySymbol, RelativeSource={RelativeSource AncestorType=Window}}}" 
                           FontWeight="SemiBold"
                           VerticalAlignment="Center"
                           Margin="10,0"/>

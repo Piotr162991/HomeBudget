@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Windows;
+using System.Windows.Controls;
 using HouseBug.ViewModels;
 using HouseBug.Views.Dialogs;
 using HouseBug.Models;
+using HouseBug.Services;
 using Microsoft.Win32;
 
 namespace HouseBug.Views
@@ -79,6 +81,41 @@ namespace HouseBug.Views
         {
             MessageBox.Show("HouseBug - Budżet Domowy\nWersja 1.0\n\nProsta aplikacja do zarządzania budżetem domowym.", 
                           "O programie", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        // Dodaj obsługę edycji budżetu miesięcznego
+        private void MonthlyBudgetDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.Row.Item is MonthlyBudget budget)
+            {
+                // Zapisz zmiany od razu po edycji komórki
+                ViewModel.SaveMonthlyBudget(budget);
+            }
+        }
+
+        private void AppSettingsMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            var manager = new BudgetManager();
+            var settings = manager.GetAppSettings();
+            var dialog = new AppSettingsDialog(settings) { Owner = this };
+            if (dialog.ShowDialog() == true && dialog.IsSaved)
+            {
+                manager.UpdateAppSettingsAsync(settings);
+                ViewModel.RefreshCurrencyFromSettings();
+                ViewModel.RefreshCommand.Execute(null);
+                ViewModel.LoadMonthlySummary();
+                ViewModel.RefreshStatisticsPanel();
+            }
+        }
+
+        private async void TransactionDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.Row.Item is Transaction transaction)
+            {
+                await ViewModel._budgetManager.UpdateTransactionAsync(transaction);
+                ViewModel.LoadMonthlySummary();
+                ViewModel.StatusMessage = "Transakcja została zaktualizowana";
+            }
         }
 
         protected override void OnClosed(EventArgs e)

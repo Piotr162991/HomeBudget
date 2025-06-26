@@ -64,6 +64,9 @@
                         Style="{StaticResource PrimaryButtonStyle}"
                         Width="100" Height="35"/>
             </StackPanel>
+            <TextBlock Text="{Binding TotalAmount, Converter={StaticResource CurrencyValueConverter}}" 
+                      FontWeight="Bold" 
+                      Foreground="{StaticResource SuccessBrush}"/>
         </Grid>
     </Border>
 </Window>

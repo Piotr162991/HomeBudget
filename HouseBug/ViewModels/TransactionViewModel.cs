@@ -210,16 +210,13 @@ namespace HouseBug.ViewModels
                 Amount = transaction.Amount;
                 Description = transaction.Description;
                 Date = transaction.Date;
-                IsIncome = transaction.IsIncome;
                 SelectedCategory = Categories.FirstOrDefault(c => c.Id == transaction.CategoryId);
+                IsIncome = transaction.IsIncome;
             }
             else
             {
-                Amount = 0;
-                Description = string.Empty;
                 Date = DateTime.Today;
                 IsIncome = false;
-                SelectedCategory = null;
             }
         }
 
@@ -246,6 +243,7 @@ namespace HouseBug.ViewModels
                 UpdatedAt = DateTime.Now
             };
         }
+
 
         protected override async Task<bool> SaveItemAsync(Transaction item)
         {

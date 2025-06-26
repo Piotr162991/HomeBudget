@@ -1,6 +1,7 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:converters="clr-namespace:HouseBug.Converters">
+                    xmlns:converters="clr-namespace:HouseBug.Converters"
+                    xmlns:converters1="clr-namespace:HouseBug.Resources.Converters">
 
     <!-- Konwertery -->
     <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
@@ -8,5 +9,8 @@
     <converters:GreaterThanZeroConverter x:Key="GreaterThanZeroConverter"/>
     <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
     <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+    <converters:DateStringConverter x:Key="DateStringConverter"/>
+    <converters1:CurrencyValueConverter x:Key="CurrencyValueConverter"/>
+    <converters1:CurrencyMultiValueConverter x:Key="CurrencyMultiValueConverter"/>
 
 </ResourceDictionary>
