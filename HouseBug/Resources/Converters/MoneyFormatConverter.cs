@@ -20,7 +20,6 @@ namespace HouseBug.Resources.Converters
         {
             if (value is string strValue)
             {
-                // Usuń wszystko poza liczbami i separatorami
                 strValue = strValue.Replace(" ", "")
                                  .Replace("zł", "")
                                  .Replace("$", "")

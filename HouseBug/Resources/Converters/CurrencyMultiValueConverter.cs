@@ -12,7 +12,6 @@ namespace HouseBug.Resources.Converters
         {
             if (values.Length >= 1 && values[0] is decimal amount)
             {
-                // Pobierz walutę bezpośrednio z bazy
                 string currency = GetCurrencyFromDb();
                 string symbol = GetSymbolForCurrency(currency);
                 return $"{amount:N2} {symbol}";

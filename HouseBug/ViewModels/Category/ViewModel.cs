@@ -83,14 +83,12 @@ namespace HouseBug.ViewModels
             set => SetProperty(ref _isActive, value);
         }
 
-        // Predefiniowane kolory
         public string[] PredefinedColors { get; } = 
         {
             "#E74C3C", "#3498DB", "#2ECC71", "#F39C12", "#9B59B6",
             "#1ABC9C", "#E67E22", "#34495E", "#F1C40F", "#E91E63"
         };
 
-        // Predefiniowane ikony
         public string[] PredefinedIcons { get; } = 
         {
             "🍕", "🚗", "🎮", "💡", "💰", "⚕️", "🛍️", "📚", "🏠", "✈️"
@@ -135,7 +133,6 @@ namespace HouseBug.ViewModels
 
                 if (SelectedCategory?.Id > 0)
                 {
-                    // Edycja istniejącej kategorii
                     category.Id = SelectedCategory.Id;
                     var success = await _budgetManager.UpdateCategoryAsync(category);
 
@@ -153,7 +150,6 @@ namespace HouseBug.ViewModels
                 }
                 else
                 {
-                    // Dodawanie nowej kategorii
                     var savedCategory = await _budgetManager.AddCategoryAsync(category);
                     Categories.Add(savedCategory);
                     SelectedCategory = savedCategory;

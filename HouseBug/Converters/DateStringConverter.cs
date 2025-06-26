@@ -10,7 +10,6 @@ namespace HouseBug.Converters
         {
             if (value is DateTime date)
             {
-                // Możesz zmienić format daty według potrzeb
                 return date.ToString("dd.MM.yyyy");
             }
             return value;

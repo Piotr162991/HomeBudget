@@ -3,7 +3,6 @@
                     xmlns:converters="clr-namespace:HouseBug.Converters"
                     xmlns:converters1="clr-namespace:HouseBug.Resources.Converters">
 
-    <!-- Konwertery -->
     <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
     <converters:GreaterThanZeroConverter x:Key="GreaterThanZeroConverter"/>

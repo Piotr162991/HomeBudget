@@ -4,7 +4,6 @@ using System.Windows.Controls;
 using HouseBug.ViewModels;
 using HouseBug.Views.Dialogs;
 using HouseBug.Models;
-using HouseBug.Services;
 using Microsoft.Win32;
 
 namespace HouseBug.Views
@@ -31,12 +30,7 @@ namespace HouseBug.Views
 
             var result = dialog.ShowDialog();
             
-            if (result == true)
-            {
-                return transactionViewModel.GetTransaction();
-            }
-
-            return null;
+            return result == true ? transactionViewModel.GetTransaction() : new Transaction();
         }
 
         private bool OnShowConfirmationDialogRequested(string message)
@@ -53,12 +47,7 @@ namespace HouseBug.Views
                 DefaultExt = extension
             };
 
-            if (saveFileDialog.ShowDialog() == true)
-            {
-                return saveFileDialog.FileName;
-            }
-
-            return null;
+            return saveFileDialog.ShowDialog() == true ? saveFileDialog.FileName : string.Empty;
         }
 
         private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
@@ -83,24 +72,21 @@ namespace HouseBug.Views
                           "O programie", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        // Dodaj obsługę edycji budżetu miesięcznego
         private void MonthlyBudgetDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
             if (e.Row.Item is MonthlyBudget budget)
             {
-                // Zapisz zmiany od razu po edycji komórki
                 ViewModel.SaveMonthlyBudget(budget);
             }
         }
 
-        private void AppSettingsMenuItem_Click(object sender, RoutedEventArgs e)
+        private async void AppSettingsMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            var manager = new BudgetManager();
-            var settings = manager.GetAppSettings();
+            var settings = ViewModel._budgetManager.GetAppSettings();
             var dialog = new AppSettingsDialog(settings) { Owner = this };
             if (dialog.ShowDialog() == true && dialog.IsSaved)
             {
-                manager.UpdateAppSettingsAsync(settings);
+                await ViewModel._budgetManager.UpdateAppSettingsAsync(settings);
                 ViewModel.RefreshCurrencyFromSettings();
                 ViewModel.RefreshCommand.Execute(null);
                 ViewModel.LoadMonthlySummary();
@@ -120,13 +106,9 @@ namespace HouseBug.Views
 
         protected override void OnClosed(EventArgs e)
         {
-            if (ViewModel != null)
-            {
-                ViewModel.ShowTransactionDialogRequested -= OnShowTransactionDialogRequested;
-                ViewModel.ShowConfirmationDialogRequested -= OnShowConfirmationDialogRequested;
-                ViewModel.GetSaveFilePathRequested -= OnGetSaveFilePathRequested;
-            }
-            
+            ViewModel.ShowTransactionDialogRequested -= OnShowTransactionDialogRequested;
+            ViewModel.ShowConfirmationDialogRequested -= OnShowConfirmationDialogRequested;
+            ViewModel.GetSaveFilePathRequested -= OnGetSaveFilePathRequested;
             base.OnClosed(e);
         }
     }

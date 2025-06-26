@@ -35,7 +35,6 @@ namespace HouseBug.Resources.Converters
         {
             if (value is string strValue)
             {
-                // Usuń symbol waluty i spacje z końca
                 if (parameter is string currency && !string.IsNullOrEmpty(currency))
                     strValue = strValue.Replace(GetSymbolForCurrency(currency), "").Trim();
                 else

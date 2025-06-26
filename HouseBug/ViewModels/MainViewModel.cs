@@ -17,7 +17,7 @@ namespace HouseBug.ViewModels
 {
     public class MainViewModel : ViewModelBase, IDisposable
     {
-        public readonly BudgetManager _budgetManager;  // Zmieniono z private na public
+        public readonly BudgetManager _budgetManager;
         private readonly ReportGenerator _reportGenerator;
 
         public MainViewModel()
@@ -166,10 +166,8 @@ namespace HouseBug.ViewModels
                     OnPropertyChanged(nameof(TotalIncome));
                     OnPropertyChanged(nameof(TotalExpenses));
                     OnPropertyChanged(nameof(Balance));
-                    // Wymuś powiadomienie o zmianie Amount w każdej transakcji
                     foreach (var t in Transactions?.ToList() ?? Enumerable.Empty<Transaction>())
                         t.ForceUpdateAmounts();
-                    // Wymuś powiadomienie o zmianie kwot w każdym budżecie
                     foreach (var b in MonthlyBudgets?.ToList() ?? Enumerable.Empty<MonthlyBudget>())
                         b.ForceUpdateAmounts();
                     LoadTransactionsForMonth();
