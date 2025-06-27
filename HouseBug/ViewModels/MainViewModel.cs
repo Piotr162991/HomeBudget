@@ -48,12 +48,18 @@ namespace HouseBug.ViewModels
             set => SetProperty(ref _transactions, value);
         }
 
-        private ObservableCollection<Category> _categories = null!;
-
+        private ObservableCollection<Category> _categories;
         public ObservableCollection<Category> Categories
         {
             get => _categories;
-            set => SetProperty(ref _categories, value);
+            set
+            {
+                if (_categories != value)
+                {
+                    _categories = value;
+                    OnPropertyChanged(nameof(Categories)); // Wywołanie zdarzenia PropertyChanged
+                }
+            }
         }
 
         public ObservableCollection<MonthlyBudget> MonthlyBudgets { get; }

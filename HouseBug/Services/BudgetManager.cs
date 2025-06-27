@@ -105,6 +105,12 @@ namespace HouseBug.Services
         {
             try
             {
+                var existingCategory = await _context.Categories.FindAsync(category.Id);
+                if (existingCategory != null)
+                {
+                    _context.Entry(existingCategory).State = EntityState.Detached; // Odłączenie istniejącej encji
+                }
+
                 _context.Categories.Update(category);
                 await _context.SaveChangesAsync();
                 return true;

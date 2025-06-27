@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using HouseBug.Models;
 using System.Threading.Tasks;
 using System.Threading;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 
 namespace HouseBug.Services
@@ -18,6 +19,7 @@ namespace HouseBug.Services
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.UseSqlite("Data Source=budget.db");
+            optionsBuilder.ConfigureWarnings(warnings => warnings.Ignore(CoreEventId.ContextDisposed)); // Wyłączenie logowania dla ContextDisposed
             
             #if DEBUG
             optionsBuilder.EnableSensitiveDataLogging();
