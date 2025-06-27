@@ -288,6 +288,11 @@ namespace HouseBug.Services
 
         #endregion
 
+        public void ClearChangeTracker()
+        {
+            _context.ChangeTracker.Clear();
+        }
+
         public void Dispose()
         {
             _context?.Dispose();

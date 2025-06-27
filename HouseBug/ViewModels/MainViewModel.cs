@@ -285,6 +285,7 @@ namespace HouseBug.ViewModels
         private async void RefreshData()
         {
             SetBusy(true, "Odświeżanie danych...");
+            _budgetManager.ClearChangeTracker();
             await LoadDataAsync();
             SetBusy(false);
             StatusMessage = "Dane zostały odświeżone";
@@ -617,7 +618,7 @@ namespace HouseBug.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Błąd podczas aktualizacji ustawień: {ex.Message}";
+                StatusMessage = $"B��ąd podczas aktualizacji ustawień: {ex.Message}";
             }
             finally
             {
