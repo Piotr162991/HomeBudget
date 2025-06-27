@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using HouseBug.Models;
 using HouseBug.Services;
@@ -57,7 +56,7 @@ namespace HouseBug.ViewModels
                 if (_categories != value)
                 {
                     _categories = value;
-                    OnPropertyChanged(nameof(Categories)); // Wywołanie zdarzenia PropertyChanged
+                    OnPropertyChanged(nameof(Categories));
                 }
             }
         }
@@ -233,7 +232,7 @@ namespace HouseBug.ViewModels
             }
         }
 
-        private void EditTransaction()
+        private async void EditTransaction()
         {
             if (SelectedTransaction == null) return;
 
@@ -247,9 +246,18 @@ namespace HouseBug.ViewModels
                 var index = Transactions.IndexOf(SelectedTransaction);
                 if (index >= 0)
                 {
-                    Transactions[index] = updatedTransaction;
-                    LoadMonthlySummary();
-                    StatusMessage = "Zaktualizowano transakcję";
+                    var updateResult = await _budgetManager.UpdateTransactionAsync(updatedTransaction);
+                    if (updateResult)
+                    {
+                        Transactions[index] = updatedTransaction;
+                        LoadMonthlySummary();
+                        RefreshData();
+                        StatusMessage = "Zaktualizowano transakcję";
+                    }
+                    else
+                    {
+                        StatusMessage = "Nie udało się zaktualizować transakcji";
+                    }
                 }
             }
         }
@@ -270,8 +278,8 @@ namespace HouseBug.ViewModels
                 if (success)
                 {
                     Transactions.Remove(SelectedTransaction);
-                    LoadMonthlySummary();
-                    StatusMessage = "Transakcja została usunięta";
+                    RefreshData();
+                    StatusMessage = "Usunięto transakcję";
                 }
                 else
                 {
@@ -316,7 +324,7 @@ namespace HouseBug.ViewModels
         {
             await Task.Run(() =>
             {
-                using var writer = new System.IO.StreamWriter(filePath);
+                using var writer = new StreamWriter(filePath);
 
                 writer.WriteLine("Data,Kategoria,Opis,Kwota,Typ");
 
@@ -335,7 +343,7 @@ namespace HouseBug.ViewModels
 
         private void GenerateReport()
         {
-            var reportDialog = new Views.Dialogs.ReportDialog(_reportGenerator, _budgetManager)
+            var reportDialog = new ReportDialog(_reportGenerator, _budgetManager)
             {
                 Owner = Application.Current.MainWindow
             };
@@ -354,7 +362,6 @@ namespace HouseBug.ViewModels
             SelectedCategoryFilter = null;
             SearchText = string.Empty;
             
-            // Przywróć wszystkie transakcje
             Transactions.Clear();
             foreach (var transaction in _allTransactions.OrderByDescending(t => t.Date))
             {
@@ -436,7 +443,6 @@ namespace HouseBug.ViewModels
         {
             if (transactions == null) return;
             
-            // Zachowaj kopię wszystkich transakcji przed filtrowaniem
             _allTransactions = new List<Transaction>(transactions);
             
             Transactions.Clear();
@@ -519,7 +525,6 @@ namespace HouseBug.ViewModels
             var filteredList = query.OrderByDescending(t => t.Date).ToList();
             FilteredTransactions = filteredList;
 
-            // Aktualizacja widocznych transakcji
             Transactions.Clear();
             foreach (var transaction in filteredList)
             {
@@ -549,6 +554,19 @@ namespace HouseBug.ViewModels
             finally
             {
                 SetBusy(false);
+            }
+        }
+
+        public async Task SavePlannedBudgetAsync(MonthlyBudget budget)
+        {
+            try
+            {
+                await _budgetManager.SaveMonthlyBudgetAsync(budget);
+                StatusMessage = "Zapisano planowaną kwotę budżetu.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = "Błąd podczas zapisywania planowanej kwoty budżetu: " + ex.Message;
             }
         }
 
@@ -640,11 +658,19 @@ namespace HouseBug.ViewModels
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Błąd podczas generowania raportu: {ex.Message}";
+                StatusMessage = $"Bł��d podczas generowania raportu: {ex.Message}";
             }
             finally
             {
                 SetBusy(false);
+            }
+        }
+
+        private void MonthlyBudgetDataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.Row.Item is MonthlyBudget budget)
+            {
+                _ = SavePlannedBudgetAsync(budget);
             }
         }
 

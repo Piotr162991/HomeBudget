@@ -97,6 +97,8 @@ namespace HouseBug.ViewModels
         {
             if (!IsValid()) return;
 
+            Console.WriteLine("Rozpoczęto zapis transakcji");
+
             await HandleOperationAsync(IsEditMode ? "aktualizacja transakcji" : "zapisywanie transakcji", async () =>
             {
                 var transaction = CreateItemFromInput();
@@ -110,16 +112,19 @@ namespace HouseBug.ViewModels
                     var success = await _budgetManager.UpdateTransactionAsync(transaction);
                     if (success)
                     {
+                        Console.WriteLine("Transakcja zaktualizowana: " + transaction.Id);
                         OnTransactionSaved(transaction);
                     }
                     else
                     {
+                        Console.WriteLine("Błąd podczas aktualizacji transakcji: " + transaction.Id);
                         ValidationMessage = "Błąd podczas aktualizacji transakcji.";
                     }
                 }
                 else
                 {
                     var savedTransaction = await _budgetManager.AddTransactionAsync(transaction);
+                    Console.WriteLine("Dodano nową transakcję: " + savedTransaction.Id);
                     OnTransactionSaved(savedTransaction);
                 }
             });

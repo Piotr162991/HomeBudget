@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using HouseBug.ViewModels;
 
 namespace HouseBug.Services
 {
@@ -30,12 +31,32 @@ namespace HouseBug.Services
         {
             try
             {
-                _context.Transactions.Update(transaction);
+                Console.WriteLine("Aktualizacja transakcji: " + transaction.Id);
+                Console.WriteLine("Kwota: " + transaction.Amount);
+                Console.WriteLine("Opis: " + transaction.Description);
+                Console.WriteLine("Data: " + transaction.Date);
+                Console.WriteLine("KategoriaId: " + transaction.CategoryId);
+
+                if (transaction.Id <= 0)
+                {
+                    return false;
+                }
+
+                var existingTransaction = await _context.Transactions.FindAsync(transaction.Id);
+                if (existingTransaction != null)
+                {
+                    _context.Entry(existingTransaction).State = EntityState.Detached;
+                }
+
+                _context.Attach(transaction);
+                _context.Entry(transaction).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
+                
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine("Błąd podczas aktualizacji transakcji: " + ex.Message);
                 return false;
             }
         }
@@ -209,6 +230,24 @@ namespace HouseBug.Services
                 _context.MonthlyBudgets.Add(budget);
             }
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<MonthlyBudget> UpdatePlannedBudgetAsync(int budgetId, decimal plannedAmount)
+        {
+            var budget = await _context.MonthlyBudgets.FindAsync(budgetId);
+            if (budget == null)
+            {
+                throw new Exception("Budget not found");
+            }
+
+            budget.PlannedAmount = plannedAmount;
+            await _context.SaveChangesAsync();
+            return budget;
+        }
+
+        public async Task<MonthlyBudget> GetMonthlyBudgetAsync(int budgetId)
+        {
+            return await _context.MonthlyBudgets.FindAsync(budgetId);
         }
 
         #endregion
