@@ -21,6 +21,11 @@ namespace HouseBug.Views
             ViewModel.GetSaveFilePathRequested += OnGetSaveFilePathRequested;
         }
 
+        private void RefreshTransactionHistory()
+        {
+            ViewModel.RefreshCommand.Execute(null);
+        }
+
         private Transaction OnShowTransactionDialogRequested(TransactionViewModel transactionViewModel)
         {
             var dialog = new TransactionDialog(transactionViewModel)
@@ -29,8 +34,14 @@ namespace HouseBug.Views
             };
 
             var result = dialog.ShowDialog();
-            
-            return result == true ? transactionViewModel.GetTransaction() : null;
+
+            if (result == true)
+            {
+                RefreshTransactionHistory();
+                return transactionViewModel.GetTransaction();
+            }
+
+            return null;
         }
 
         private bool OnShowConfirmationDialogRequested(string message)
